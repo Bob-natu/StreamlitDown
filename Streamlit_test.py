@@ -40,9 +40,6 @@ if uploaded_file is not None:
 
     st.sidebar.success("動画がアップロードされました。解析を開始します。")
 
-    # 出力ファイルパス設定
-    output_video_path = '/tmp/output_video_with_plot.mp4'
-
     # MediaPipe Pose 初期化
     mp_pose = mp.solutions.pose
     mp_drawing = mp.solutions.drawing_utils
@@ -66,10 +63,13 @@ if uploaded_file is not None:
     # 合成動画設定
     combined_width = frame_width + plot_width
     combined_height = max(frame_height, plot_height)
-    fourcc = cv2.VideoWriter_fourcc(*'acv1')
+
+    # メモリ内での出力動画の作成
+    memory_output = BytesIO()
 
     # VideoWriterを使って出力動画を作成
-    out = cv2.VideoWriter(output_video_path, fourcc, fps, (combined_width, combined_height))
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4形式で書き込み
+    out = cv2.VideoWriter(memory_output, fourcc, fps, (combined_width, combined_height))
 
     # 進捗バーを表示
     progress_bar = st.progress(0)
@@ -138,14 +138,10 @@ if uploaded_file is not None:
     progress_bar.empty()
     st.success("解析が完了しました！")
 
-    # 出力動画をメモリ上で読み込む
-    with open(output_video_path, "rb") as video_file:
-        video_data = video_file.read()
-
-    # メモリ内で動画を表示
-    st.video(video_data)
+    # メモリ内での動画を表示
+    memory_output.seek(0)  # ポインタを先頭に戻す
+    st.video(memory_output)
 
     # 一時ファイルをクリーンアップ
     os.remove(input_video_path)
-    os.remove(output_video_path)
     st.info("一時ファイルをクリーンアップしました。")
