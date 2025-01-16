@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tempfile
 import os
+import imageio
 from io import BytesIO
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
@@ -60,16 +61,11 @@ if uploaded_file is not None:
     plot_width = 300
     plot_height = frame_height
 
-    # 合成動画設定
-    combined_width = frame_width + plot_width
-    combined_height = max(frame_height, plot_height)
-
     # メモリ内での出力動画の作成
     memory_output = BytesIO()
 
-    # VideoWriterを使って出力動画を作成
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4形式で書き込み
-    out = cv2.VideoWriter(memory_output, fourcc, fps, (combined_width, combined_height))
+    # imageioによるメモリ内動画の作成
+    writer = imageio.get_writer(memory_output, format='mp4', fps=fps)
 
     # 進捗バーを表示
     progress_bar = st.progress(0)
@@ -124,15 +120,15 @@ if uploaded_file is not None:
             plot_image_resized = cv2.resize(plot_image, (plot_width, plot_height))
             combined_frame = np.hstack((frame, plot_image_resized))
 
-            # 合成フレームを保存
-            out.write(combined_frame)
+            # 合成フレームをメモリ内に保存
+            writer.append_data(combined_frame)
 
             # 進捗バー更新
             progress = int((frame_number / total_frames) * 100)
             progress_bar.progress(progress)
 
         cap.release()
-        out.release()
+        writer.close()
 
     # 解析完了メッセージ
     progress_bar.empty()
