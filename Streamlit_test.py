@@ -121,7 +121,8 @@ if uploaded_file is not None:
             combined_frame = np.hstack((frame, plot_image_resized))
 
             # 合成フレームをメモリ内に保存
-            writer.append_data(combined_frame)
+            if combined_frame.shape[2] == 3:  # Ensure it is a 3-channel frame (RGB)
+                writer.append_data(combined_frame)
 
             # 進捗バー更新
             progress = int((frame_number / total_frames) * 100)
