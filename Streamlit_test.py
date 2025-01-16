@@ -67,6 +67,13 @@ if uploaded_file is not None:
     combined_width = frame_width + plot_width
     combined_height = max(frame_height, plot_height)
     fourcc = cv2.VideoWriter_fourcc(*'acv1')
+
+    # 動画出力ディレクトリの確認
+    output_dir = os.path.dirname(output_video_path)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)  # 出力ディレクトリが存在しない場合、作成
+
+    # VideoWriterを使って出力動画を作成
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (combined_width, combined_height))
 
     # 進捗バーを表示
