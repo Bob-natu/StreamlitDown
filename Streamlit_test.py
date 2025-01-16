@@ -3,8 +3,8 @@ import cv2
 import mediapipe as mp
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import tempfile
+import os
 from io import BytesIO
 from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
@@ -136,8 +136,12 @@ if uploaded_file is not None:
     progress_bar.empty()
     st.success("解析が完了しました！")
 
-    # 出力動画の表示
-    st.video(output_video_path)
+    # 出力動画をメモリ上で読み込む
+    with open(output_video_path, "rb") as video_file:
+        video_data = video_file.read()
+
+    # メモリ内で動画を表示
+    st.video(video_data)
 
     # 一時ファイルをクリーンアップ
     os.remove(input_video_path)
