@@ -66,7 +66,7 @@ if uploaded_file is not None:
         # 合成動画設定
         combined_width = frame_width + plot_width
         combined_height = max(frame_height, plot_height)
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        fourcc = cv2.VideoWriter_fourcc(*'acv1')
         out = cv2.VideoWriter(output_video_path, fourcc, fps, (combined_width, combined_height))
 
         # 進捗バーを表示
