@@ -120,8 +120,8 @@ if uploaded_file is not None:
             plot_image_resized = cv2.resize(plot_image, (plot_width, plot_height))
             combined_frame = np.hstack((frame, plot_image_resized))
 
-            # combined_frameがRGB形式であることを確認
-            if combined_frame.shape[2] == 3:  # RGB形式であることを確認
+            # combined_frameがuint8型でRGBであることを確認
+            if combined_frame.shape[2] == 3 and combined_frame.dtype == np.uint8:
                 writer.append_data(combined_frame)
 
             # 進捗バー更新
