@@ -35,7 +35,7 @@ if uploaded_file is not None:
         st.sidebar.success("動画がアップロードされました。解析を開始します。")
 
         # 出力ファイルパス設定
-        output_video_path = os.path.join(tempfile.gettempdir(), "output_video_with_plot.mp4")
+        output_video_path = os.path.join(tempfile.gettempdir(), "output_video_with_plot.avi")
 
         # MediaPipe Pose 初期化
         mp_pose = mp.solutions.pose
@@ -54,7 +54,7 @@ if uploaded_file is not None:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         # 合成動画設定
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264 コーデック
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # H.264 コーデック
         out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width + 300, frame_height))
 
         with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
