@@ -1,4 +1,6 @@
 import streamlit as st
+import cv2
+import mediapipe as mp
 import os
 import tempfile
 
@@ -16,8 +18,46 @@ if uploaded_file is not None:
 
     st.sidebar.success("動画がアップロードされました。解析を開始します。")
 
-    # 動画の表示
-    st.video(input_video_path)
+    # MediaPipe Pose 初期化
+    mp_pose = mp.solutions.pose
+    mp_drawing = mp.solutions.drawing_utils
+
+    # 動画読み込み
+    cap = cv2.VideoCapture(input_video_path)
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+
+    # 出力動画の設定
+    output_video_path = os.path.join(temp_dir.name, "output_video_with_pose.mp4")
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4形式
+    out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+
+    # Pose インスタンス作成
+    with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            # フレームをRGBに変換して処理
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = pose.process(image_rgb)
+
+            if results.pose_landmarks:
+                # 骨格描画
+                mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+
+            # 骨格を描画したフレームを出力動画に書き込み
+            out.write(frame)
+
+        cap.release()
+        out.release()
+
+    st.success("骨格抽出が完了しました！")
+
+    # 動画再生
+    st.video(output_video_path)
 
     # 一時ディレクトリのクリーンアップ
     temp_dir.cleanup()
