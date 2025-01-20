@@ -2,6 +2,7 @@ import streamlit as st
 import cv2
 import mediapipe as mp
 import matplotlib.pyplot as plt
+import matplotlib  # ← この行を追加
 matplotlib.use("Agg")
 import numpy as np
 import os
