@@ -106,25 +106,19 @@ if uploaded_file is not None:
                 ax.set_ylim(0, 1)
                 plt.tight_layout()
 
-                ## グラフを画像として保存
+                # グラフを画像として保存
                 canvas = FigureCanvas(fig)
                 canvas.draw()
-
-                # ARGBフォーマットを取得して変換
-                plot_image = np.frombuffer(canvas.tostring_argb(), dtype=np.uint8)
-                plot_image = plot_image.reshape(canvas.get_width_height()[::-1] + (4,))  # (高さ, 幅, 4チャネル)
-                plot_image = plot_image[..., [1, 2, 3, 0]]  # ARGB → RGBA に変換
+                plot_image = np.frombuffer(canvas.tostring_rgb(), dtype=np.uint8)
+                plot_image = plot_image.reshape(canvas.get_width_height()[::-1] + (3,))
                 plt.close(fig)
 
-                # グラフ画像をリサイズ
+                # グラフ画像とフレームを横に連結
                 plot_image_resized = cv2.resize(plot_image, (300, frame_height))
+                combined_frame = np.hstack((frame, plot_image_resized))
 
-                # `frame` を RGBA に変換
-                frame_rgba = cv2.cvtColor(frame, cv2.COLOR_BGR2BGRA)  # BGR → RGBA に変換
-
-                # `frame_rgba` と `plot_image_resized` を横に連結
-                combined_frame = np.hstack((frame_rgba, plot_image_resized))  # 配列を連結
-
+                # 合成フレームを保存
+                out.write(combined_frame)
 
             cap.release()
             out.release()
@@ -132,7 +126,7 @@ if uploaded_file is not None:
         st.success("解析が完了しました！")
 
         # ここでファイルを表示
-        st.video(output_video_path)
+        st.video(output_video_path)  # 絶対パスを指定
 
         # 一時ディレクトリのクリーンアップはここで行う
         temp_dir.cleanup()
@@ -140,4 +134,3 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"エラーが発生しました: {e}")
-
