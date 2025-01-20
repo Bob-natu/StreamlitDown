@@ -54,7 +54,7 @@ if uploaded_file is not None:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         # 合成動画設定
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # H.264 コーデック
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # H.264 コーデック
         out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width + 300, frame_height))
 
         with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
