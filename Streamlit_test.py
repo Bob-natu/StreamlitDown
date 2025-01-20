@@ -62,8 +62,11 @@ if uploaded_file is not None:
     st.success("骨格抽出が完了しました！")
     st.write("動画の保存パス:", output_video_path)
 
-    # 動画再生
-    st.video("output_video_with_pose.mp4")
+    if os.path.exists("output_video_with_pose.mp4"):
+        st.video("output_video_with_pose.mp4")
+    else:
+        st.error("動画ファイルが見つかりません")
+
 
     # 一時ディレクトリのクリーンアップ
     temp_dir.cleanup()
