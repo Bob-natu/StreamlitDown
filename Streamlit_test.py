@@ -2,12 +2,12 @@ import streamlit as st
 import cv2
 import mediapipe as mp
 import matplotlib.pyplot as plt
-import matplotlib  # ← この行を追加
+import matplotlib
 matplotlib.use("Agg")
 import numpy as np
 import os
 import tempfile
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas  # 修正
+from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
 
 # CSS を使用して画像を中央ぞろえにする
 st.markdown(
@@ -22,10 +22,6 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
-# Matplotlibのバックエンドを明示的に設定
-import matplotlib
-matplotlib.use("Agg")  # 非インタラクティブモードを指定
 
 # Streamlit UI設定
 st.write("## 動画解析: 手首と肩の位置プロット")
@@ -60,13 +56,13 @@ if uploaded_file is not None:
 
         # 動画読み込み
         cap = cv2.VideoCapture(input_video_path)
-        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
+        frame_width = 640  # 解像度調整
+        frame_height = 480
+        fps = 30  # FPS設定
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         # 合成動画設定
-        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # MJPEG コーデックを使用
         out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width + 300, frame_height))
 
         # Pose インスタンス作成
