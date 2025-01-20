@@ -68,7 +68,7 @@ if uploaded_file is not None:
         # 合成動画設定
         combined_width = frame_width + 300
         combined_height = frame_height
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        fourcc = cv2.VideoWriter_fourcc(*'acv1')
         out = cv2.VideoWriter(output_video_path, fourcc, fps, (combined_width, combined_height))
 
         # Pose インスタンス作成
