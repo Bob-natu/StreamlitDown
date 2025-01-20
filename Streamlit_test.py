@@ -54,7 +54,13 @@ if uploaded_file is not None:
         cap.release()
         out.release()
 
+    if os.path.exists(output_video_path):
+        st.success("動画が正しく保存されました！")
+    else:
+        st.error("動画が保存されていません。")
+    
     st.success("骨格抽出が完了しました！")
+    st.write("動画の保存パス:", output_video_path)
 
     # 動画再生
     st.video(output_video_path)  # 出力パスを指定
