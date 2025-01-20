@@ -121,7 +121,10 @@ if uploaded_file is not None:
 
                 # グラフ画像とフレームを横に連結
                 plot_image_resized = cv2.resize(plot_image, (300, frame_height))
-                combined_frame = np.hstack((frame, plot_image_resized))
+                # ARGB -> RGB への変換
+                plot_image_rgb = cv2.cvtColor(plot_image_resized, cv2.COLOR_RGBA2RGB)
+                combined_frame = np.hstack((frame, plot_image_rgb))
+
 
                 # 合成フレームを保存
                 out.write(combined_frame)
