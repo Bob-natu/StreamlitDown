@@ -66,10 +66,10 @@ if uploaded_file is not None:
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         # 合成動画設定
-        combined_width = frame_width + 300
-        combined_height = frame_height
         fourcc = cv2.VideoWriter_fourcc(*'avc1')
-        out = cv2.VideoWriter(output_video_path, fourcc, fps, (combined_width, combined_height))
+        frame_width = 640
+        frame_height = 480
+        out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
         # Pose インスタンス作成
         with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
