@@ -98,6 +98,9 @@ if uploaded_file is not None:
                     mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
                 # グラフ作成
+                # ... 他のコードはそのまま ...
+
+                # グラフ作成
                 fig, ax = plt.subplots(figsize=(3, frame_height / 100), dpi=100)
                 ax.plot(frame_numbers, [1 - y for y in right_shoulder_y], label="Right Shoulder Y", color="blue")
                 ax.plot(frame_numbers, [1 - y for y in left_shoulder_y], label="Left Shoulder Y", color="green")
@@ -109,8 +112,11 @@ if uploaded_file is not None:
                 # グラフを画像として保存
                 canvas = FigureCanvas(fig)
                 canvas.draw()
-                plot_image = np.frombuffer(canvas.tostring_rgb(), dtype=np.uint8)  # 修正
-                plot_image = plot_image.reshape(canvas.get_width_height()[::-1] + (3,))
+                
+                # 修正: ARGBフォーマットを取得して変換
+                plot_image = np.frombuffer(canvas.tostring_argb(), dtype=np.uint8)
+                plot_image = plot_image.reshape(canvas.get_width_height()[::-1] + (4,))  # (高さ, 幅, 4チャネル)
+                plot_image = plot_image[..., [1, 2, 3, 0]]  # ARGB → RGBA に変換
                 plt.close(fig)
 
                 # グラフ画像とフレームを横に連結
@@ -119,6 +125,9 @@ if uploaded_file is not None:
 
                 # 合成フレームを保存
                 out.write(combined_frame)
+
+# ... 他のコードはそのまま ...
+
 
             cap.release()
             out.release()
