@@ -29,8 +29,8 @@ if uploaded_file is not None:
     fps = cap.get(cv2.CAP_PROP_FPS)
 
     # 出力動画の設定
-    output_video_path = os.path.join(temp_dir.name, "output_video_with_pose.mp4")
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')  # MP4形式
+    output_video_path = os.path.join(temp_dir.name, "output_video_with_pose.mp4")  # 一時ディレクトリに保存
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4形式
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
     # Pose インスタンス作成
