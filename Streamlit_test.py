@@ -1,22 +1,23 @@
 import streamlit as st
 import cv2
-import mediapipe as mp
 import os
 import tempfile
+import mediapipe as mp
 
-# 動画ファイルをアップロード
+# 動画アップロード
 uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4", "avi", "mov"])
 
 if uploaded_file is not None:
     # 一時ディレクトリ作成
     temp_dir = tempfile.TemporaryDirectory()
-    input_video_path = os.path.join(temp_dir.name, uploaded_file.name)
 
-    # アップロードされた動画を保存
+    # 一時ファイルに保存
+    input_video_path = os.path.join(temp_dir.name, uploaded_file.name)
     with open(input_video_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
 
-    st.sidebar.success("動画がアップロードされました。解析を開始します。")
+    # 出力ファイルのパス
+    output_video_path = os.path.join(temp_dir.name, "output_video_with_pose.mp4")
 
     # MediaPipe Pose 初期化
     mp_pose = mp.solutions.pose
@@ -28,9 +29,8 @@ if uploaded_file is not None:
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
 
-    # 出力動画の設定
-    output_video_path = os.path.join(temp_dir.name, "output_video_with_pose.mp4")  # 一時ディレクトリに保存
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # MP4形式
+    # 出力動画設定
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or use 'MJPG'
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
     # Pose インスタンス作成
@@ -40,40 +40,23 @@ if uploaded_file is not None:
             if not ret:
                 break
 
-            # フレームをRGBに変換して処理
+            # 骨格抽出処理
             image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = pose.process(image_rgb)
 
             if results.pose_landmarks:
-                # 骨格描画
+                # 骨格を描画
                 mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-            # 骨格を描画したフレームを出力動画に書き込み
+            # 処理したフレームを書き込む
             out.write(frame)
 
         cap.release()
-        # 動画ファイルの書き込み後に確認
-        out.release()  # 動画ファイルの書き込みを終了
-        if os.path.exists(output_video_path):
-            st.success("動画が保存されました！")
-            st.video(output_video_path)
-        else:
-            st.error("動画ファイルの保存に失敗しました")
+        out.release()
 
-    if os.path.exists(output_video_path):
-        st.success("動画が正しく保存されました！")
-    else:
-        st.error("動画が保存されていません。")
-    
-    st.success("骨格抽出が完了しました！")
-    st.write("動画の保存パス:", output_video_path)
-
-    if os.path.exists("output_video_with_pose.mp4"):
-        st.video("output_video_with_pose.mp4")
-    else:
-        st.error("動画ファイルが見つかりません")
-
+    # 処理が完了した動画を表示
+    st.success("動画の処理が完了しました！")
+    st.video(output_video_path)  # 絶対パスを指定することが重要
 
     # 一時ディレクトリのクリーンアップ
     temp_dir.cleanup()
-    st.info("一時ファイルをクリーンアップしました。")
