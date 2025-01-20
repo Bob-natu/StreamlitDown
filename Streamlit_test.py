@@ -52,7 +52,13 @@ if uploaded_file is not None:
             out.write(frame)
 
         cap.release()
-        out.release()
+        # 動画ファイルの書き込み後に確認
+        out.release()  # 動画ファイルの書き込みを終了
+        if os.path.exists(output_video_path):
+            st.success("動画が保存されました！")
+            st.video(output_video_path)
+        else:
+            st.error("動画ファイルの保存に失敗しました")
 
     if os.path.exists(output_video_path):
         st.success("動画が正しく保存されました！")
