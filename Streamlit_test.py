@@ -109,16 +109,17 @@ if uploaded_file is not None:
                 # グラフを画像として保存
                 canvas = FigureCanvas(fig)
                 canvas.draw()
-                plot_image = np.frombuffer(canvas.tostring_rgb(), dtype=np.uint8)
-                plot_image = plot_image.reshape(canvas.get_width_height()[::-1] + (3,))
+
+                # 修正: ARGBフォーマットを取得して変換
+                plot_image = np.frombuffer(canvas.tostring_argb(), dtype=np.uint8)
+                plot_image = plot_image.reshape(canvas.get_width_height()[::-1] + (4,))  # (高さ, 幅, 4チャネル)
+                plot_image = plot_image[..., [1, 2, 3, 0]]  # ARGB → RGBA に変換
                 plt.close(fig)
 
                 # グラフ画像とフレームを横に連結
                 plot_image_resized = cv2.resize(plot_image, (300, frame_height))
-                combined_frame = np.hstack((frame, plot_image_resized))
+                combined_frame = np.hstack((frame, plot_image_resized))  # 配列を連結
 
-                # 合成フレームを保存
-                out.write(combined_frame)
 
             cap.release()
             out.release()
