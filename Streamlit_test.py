@@ -68,7 +68,7 @@ if uploaded_file is not None:
         # 合成動画設定
         combined_width = frame_width + 300
         combined_height = frame_height
-        fourcc = cv2.VideoWriter_fourcc(*'acv1')
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(output_video_path, fourcc, fps, (combined_width, combined_height))
 
         # Pose インスタンス作成
@@ -98,9 +98,6 @@ if uploaded_file is not None:
                     mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
                 # グラフ作成
-                # ... 他のコードはそのまま ...
-
-                # グラフ作成
                 fig, ax = plt.subplots(figsize=(3, frame_height / 100), dpi=100)
                 ax.plot(frame_numbers, [1 - y for y in right_shoulder_y], label="Right Shoulder Y", color="blue")
                 ax.plot(frame_numbers, [1 - y for y in left_shoulder_y], label="Left Shoulder Y", color="green")
@@ -112,32 +109,29 @@ if uploaded_file is not None:
                 # グラフを画像として保存
                 canvas = FigureCanvas(fig)
                 canvas.draw()
-                
-                # 修正: ARGBフォーマットを取得して変換
-                plot_image = np.frombuffer(canvas.tostring_argb(), dtype=np.uint8)
-                plot_image = plot_image.reshape(canvas.get_width_height()[::-1] + (4,))  # (高さ, 幅, 4チャネル)
-                plot_image = plot_image[..., [1, 2, 3, 0]]  # ARGB → RGBA に変換
+                plot_image = np.frombuffer(canvas.tostring_rgb(), dtype=np.uint8)
+                plot_image = plot_image.reshape(canvas.get_width_height()[::-1] + (3,))
                 plt.close(fig)
 
                 # グラフ画像とフレームを横に連結
                 plot_image_resized = cv2.resize(plot_image, (300, frame_height))
-                # ARGB -> RGB への変換
-                plot_image_rgb = cv2.cvtColor(plot_image_resized, cv2.COLOR_RGBA2RGB)
-                combined_frame = np.hstack((frame, plot_image_rgb))
-
+                combined_frame = np.hstack((frame, plot_image_resized))
 
                 # 合成フレームを保存
                 out.write(combined_frame)
-
-# ... 他のコードはそのまま ...
-
 
             cap.release()
             out.release()
 
         st.success("解析が完了しました！")
+
+        # ここでファイルを表示
         st.video(output_video_path)
 
-    finally:
+        # 一時ディレクトリのクリーンアップはここで行う
         temp_dir.cleanup()
         st.info("一時ファイルをクリーンアップしました。")
+
+    except Exception as e:
+        st.error(f"エラーが発生しました: {e}")
+
