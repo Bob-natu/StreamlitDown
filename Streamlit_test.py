@@ -67,9 +67,7 @@ if uploaded_file is not None:
 
         # 合成動画設定
         fourcc = cv2.VideoWriter_fourcc(*'avc1')
-        frame_width = 640
-        frame_height = 480
-        out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+        out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width + 300, frame_height))  # 横幅を足す
 
         # Pose インスタンス作成
         with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
@@ -116,7 +114,7 @@ if uploaded_file is not None:
                 plot_image = plot_image[..., [1, 2, 3, 0]]  # ARGB → RGBA に変換
                 plt.close(fig)
 
-                # グラフ画像をリサイズ
+                # グラフ画像をリサイズして高さを一致させる
                 plot_image_resized = cv2.resize(plot_image, (300, frame_height))
 
                 # `frame` を RGBA に変換
@@ -124,7 +122,6 @@ if uploaded_file is not None:
 
                 # `frame_rgba` と `plot_image_resized` を横に連結
                 combined_frame = np.hstack((frame_rgba, plot_image_resized))  # 配列を連結
-
 
                 # 合成フレームを保存
                 out.write(combined_frame)
