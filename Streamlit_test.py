@@ -63,7 +63,7 @@ if uploaded_file is not None:
     st.write("動画の保存パス:", output_video_path)
 
     # 動画再生
-    st.video(f'file://{output_video_path}')
+    st.video("output_video_with_pose.mp4")
 
     # 一時ディレクトリのクリーンアップ
     temp_dir.cleanup()
