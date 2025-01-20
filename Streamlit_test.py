@@ -17,7 +17,7 @@ if uploaded_file is not None:
         f.write(uploaded_file.getbuffer())
 
     # 出力ファイルのパス
-    output_video_path = os.path.join(temp_dir.name, "output_video_with_pose.mp4")
+    output_video_path = '/tmp/output_video_with_pose.mp4'
 
     # MediaPipe Pose 初期化
     mp_pose = mp.solutions.pose
@@ -30,7 +30,7 @@ if uploaded_file is not None:
     fps = cap.get(cv2.CAP_PROP_FPS)
 
     # 出力動画設定
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # or use 'MJPG'
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')  # または 'XVID'
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
     # Pose インスタンス作成
@@ -56,7 +56,7 @@ if uploaded_file is not None:
 
     # 処理が完了した動画を表示
     st.success("動画の処理が完了しました！")
-    st.video(output_video_path)  # 絶対パスを指定することが重要
+    st.video(f"file://{output_video_path}")  # 出力パスを指定
 
     # 一時ディレクトリのクリーンアップ
     temp_dir.cleanup()
