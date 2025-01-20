@@ -57,7 +57,7 @@ if uploaded_file is not None:
     st.success("骨格抽出が完了しました！")
 
     # 動画再生
-    st.video(output_video_path)
+    st.video(output_video_path)  # 出力パスを指定
 
     # 一時ディレクトリのクリーンアップ
     temp_dir.cleanup()
