@@ -30,8 +30,8 @@ if uploaded_file is not None:
         # メモリ上に出力動画を保存
         output_video = io.BytesIO()
 
-        # `MJPEG` または `mp4v` コーデックを使用
-        fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # MJPEG（もしくは 'mp4v'）を使用
+        # `MJPEG` を使用し、AVI形式に変更
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # MJPEGを使用
         out = cv2.VideoWriter(temp_input_file.name, fourcc, fps, (frame_width, frame_height))
 
         # 進捗バー
