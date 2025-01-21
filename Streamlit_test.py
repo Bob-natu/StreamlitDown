@@ -31,7 +31,7 @@ if uploaded_file is not None:
         output_video = io.BytesIO()
 
         # `MJPEG` を使用し、AVI形式に変更
-        fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # MJPEGを使用
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')  # MJPEGを使用
         out = cv2.VideoWriter(temp_input_file.name, fourcc, fps, (frame_width, frame_height))
 
         # 進捗バー
