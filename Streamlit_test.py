@@ -14,8 +14,8 @@ st.sidebar.header("設定")
 uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4", "avi", "mov"])
 
 if uploaded_file is not None:
-    # 一時ファイルの作成
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_input_file:
+    # 一時ディレクトリの作成
+    with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_input_file:
         # アップロードされた動画を保存
         temp_input_file.write(uploaded_file.read())
         temp_input_file.flush()
@@ -40,10 +40,7 @@ if uploaded_file is not None:
         fps = cap.get(cv2.CAP_PROP_FPS)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        # デバッグ用メッセージ
-        st.write(f"動画の解像度: {frame_width}x{frame_height}, フレーム数: {total_frames}, FPS: {fps}")
-
-        # 出力動画をメモリに保存
+        # 出力動画をメモリ内に保存
         output_video = io.BytesIO()
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(temp_input_file.name, fourcc, fps, (frame_width, frame_height))
@@ -109,18 +106,15 @@ if uploaded_file is not None:
         st.video(output_video)
 
         # 肩と手首の位置データのグラフ化
-        if frame_numbers and right_shoulder_y and left_shoulder_y:
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.plot(frame_numbers, [1 - y for y in right_shoulder_y], label="Right Shoulder Y", color="blue")
-            ax.plot(frame_numbers, [1 - y for y in left_shoulder_y], label="Left Shoulder Y", color="green")
-            ax.set_xlabel("Frame Number")
-            ax.set_ylabel("Normalized Y Coordinate")
-            ax.set_title("Shoulder and Wrist Positions Over Time")
-            ax.legend()
-            plt.tight_layout()
-            st.pyplot(fig)
-        else:
-            st.warning("グラフデータが記録されていません。動画を確認してください。")
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.plot(frame_numbers, [1 - y for y in right_shoulder_y], label="Right Shoulder Y", color="blue")
+        ax.plot(frame_numbers, [1 - y for y in left_shoulder_y], label="Left Shoulder Y", color="green")
+        ax.set_xlabel("Frame Number")
+        ax.set_ylabel("Normalized Y Coordinate")
+        ax.set_title("Shoulder and Wrist Positions Over Time")
+        ax.legend()
+        plt.tight_layout()
+        st.pyplot(fig)
 
         # 右手首の最高到達点の画像表示
         if highest_wrist_image is not None:
@@ -130,5 +124,3 @@ if uploaded_file is not None:
                 use_container_width=True,
                 channels="BGR"
             )
-        else:
-            st.warning("右手首の最高到達点が見つかりませんでした。")
