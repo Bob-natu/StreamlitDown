@@ -29,7 +29,7 @@ if uploaded_file is not None:
 
         # メモリ上に出力動画を保存
         output_video = io.BytesIO()
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # mp4vを使用
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')  # mp4vを使用
         out = cv2.VideoWriter(temp_input_file.name, fourcc, fps, (frame_width, frame_height))
 
         # 進捗バー
