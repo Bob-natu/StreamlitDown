@@ -3,6 +3,7 @@ import cv2
 import os
 import tempfile
 import mediapipe as mp
+import shutil
 
 # 動画アップロード
 uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4", "avi", "mov"])
@@ -17,7 +18,7 @@ if uploaded_file is not None:
         f.write(uploaded_file.getbuffer())
 
     # 出力ファイルのパス
-    output_video_path = os.path.join(temp_dir.name, 'output_video_with_pose.mp4')
+    output_video_path = os.path.join(temp_dir.name, 'output_video_with_pose.mp4')  # 修正箇所
     # MediaPipe Pose 初期化
     mp_pose = mp.solutions.pose
     mp_drawing = mp.solutions.drawing_utils
@@ -29,7 +30,7 @@ if uploaded_file is not None:
     fps = cap.get(cv2.CAP_PROP_FPS)
 
     # 出力動画設定
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')  # または 'XVID'
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # mp4vを使用
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
     # Pose インスタンス作成
@@ -55,7 +56,13 @@ if uploaded_file is not None:
 
     # 処理が完了した動画を表示
     st.success("動画の処理が完了しました！")
-    st.video(f"file://{output_video_path}")  # 出力パスを指定
+
+    # Streamlitでメモリ上のファイルを表示するため、ファイルを読み込む
+    with open(output_video_path, "rb") as video_file:
+        video_bytes = video_file.read()
+
+    # メモリから動画を読み込み、Streamlitで表示
+    st.video(video_bytes)
 
     # 一時ディレクトリのクリーンアップ
     temp_dir.cleanup()
