@@ -30,7 +30,7 @@ if uploaded_file is not None:
     fps = cap.get(cv2.CAP_PROP_FPS)
 
     # 出力動画設定
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # mp4vを使用
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')  # mp4vを使用
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
     # Pose インスタンス作成
