@@ -29,7 +29,7 @@ if uploaded_file is not None:
 
         # メモリ上に出力動画を保存
         output_video = io.BytesIO()
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')  # mp4vを使用
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # mp4vを使用
         out = cv2.VideoWriter(temp_input_file.name, fourcc, fps, (frame_width, frame_height))
 
         # 進捗バー
@@ -37,6 +37,7 @@ if uploaded_file is not None:
 
         # Poseインスタンスの作成
         with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
+            frame_counter = 0
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret:
@@ -56,14 +57,9 @@ if uploaded_file is not None:
                 out.write(frame)
 
                 # 進捗バーの更新
-                frame_number = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
-                progress = int((frame_number / total_frames) * 100)
+                frame_counter += 1
+                progress = int((frame_counter / total_frames) * 100)
                 progress_bar.progress(progress)
-
-                # デバッグ表示（骨格が描画されているか確認）
-                # cv2.imshow('Frame with Pose', frame)
-                # if cv2.waitKey(1) & 0xFF == ord('q'):  # 'q'を押すと終了
-                #     break
 
             # リソース解放
             cap.release()
