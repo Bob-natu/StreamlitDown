@@ -1,81 +1,76 @@
 import streamlit as st
 import cv2
-import os
-import tempfile
 import mediapipe as mp
+import tempfile
 import io
 
+# MediaPipeのPoseモジュールを初期化
+mp_pose = mp.solutions.pose
+mp_drawing = mp.solutions.drawing_utils
+
+st.title("動画の骨格抽出と再生")
+
 # 動画アップロード
-uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4", "avi", "mov"])
-
+uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4", "mov", "avi"])
 if uploaded_file is not None:
-    # 一時ファイルに保存
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_input_file:
-        temp_input_file.write(uploaded_file.read())
-        temp_input_file.flush()
+    # アップロードされたファイルを一時ディレクトリに保存
+    temp_input_file = tempfile.NamedTemporaryFile(delete=False)
+    temp_input_file.write(uploaded_file.read())
+    
+    # 入力動画のパス
+    input_video_path = temp_input_file.name
+    
+    # 処理済み動画を保存する一時ファイル
+    temp_output_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+    output_video_path = temp_output_file.name
 
-        st.sidebar.success("動画がアップロードされました。解析を開始します。")
+    # 動画を読み込む
+    cap = cv2.VideoCapture(input_video_path)
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
 
-        # MediaPipe Poseの設定
-        mp_pose = mp.solutions.pose
-        mp_drawing = mp.solutions.drawing_utils
+    # 動画の書き込み設定
+    fourcc = cv2.VideoWriter_fourcc(*"mp4v")  # MP4形式
+    out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
-        # 動画の読み込み
-        cap = cv2.VideoCapture(temp_input_file.name)
-        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    # MediaPipe Poseを使ってフレームごとに骨格を抽出
+    with mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5) as pose:
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-        # メモリ上に出力動画を保存
-        output_video = io.BytesIO()
+            # フレームをRGBに変換
+            image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        # `MJPEG` を使用し、AVI形式に変更
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')  # MJPEGを使用
-        out = cv2.VideoWriter(temp_input_file.name, fourcc, fps, (frame_width, frame_height))
+            # 骨格を検出
+            results = pose.process(image)
 
-        # 進捗バー
-        progress_bar = st.progress(0)
+            # 骨格を描画
+            if results.pose_landmarks:
+                mp_drawing.draw_landmarks(
+                    frame,
+                    results.pose_landmarks,
+                    mp_pose.POSE_CONNECTIONS,
+                    mp_drawing.DrawingSpec(color=(0, 255, 0), thickness=2, circle_radius=2),
+                    mp_drawing.DrawingSpec(color=(255, 255, 255), thickness=2, circle_radius=2),
+                )
 
-        # Poseインスタンスの作成
-        with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
-            frame_counter = 0
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
-                    break
+            # 書き込み用のフレームをBGRに戻して保存
+            out.write(frame)
 
-                # 骨格抽出処理
-                image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                results = pose.process(image_rgb)
+    # 処理終了後にリソースを解放
+    cap.release()
+    out.release()
 
-                if results.pose_landmarks:
-                    # 骨格を描画
-                    mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-                else:
-                    st.warning(f"フレーム {int(cap.get(cv2.CAP_PROP_POS_FRAMES))} で骨格が検出されませんでした")
+    # 処理済み動画をBytesIOオブジェクトに読み込む
+    with open(output_video_path, "rb") as f:
+        video_bytes = f.read()
 
-                # 処理したフレームを書き込む
-                out.write(frame)
+    # Streamlitで処理済み動画を再生
+    st.video(io.BytesIO(video_bytes))
 
-                # 進捗バーの更新
-                frame_counter += 1
-                progress = int((frame_counter / total_frames) * 100)
-                progress_bar.progress(progress)
-
-            # リソース解放
-            cap.release()
-            out.release()
-
-        # メモリに保存された動画を読み込む
-        with open(temp_input_file.name, "rb") as video_file:
-            video_bytes = video_file.read()
-
-        output_video.seek(0)  # バッファを先頭に移動
-
-        # 出力動画の表示
-        st.success("動画の処理が完了しました！")
-        st.video(io.BytesIO(video_bytes))  # メモリから動画を読み込み、表示
-
-        # 一時ファイルのクリーンアップ
-        os.remove(temp_input_file.name)
+    # 一時ファイルを削除（オプション）
+    temp_input_file.close()
+    temp_output_file.close()
