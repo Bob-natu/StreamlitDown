@@ -3,6 +3,7 @@ import cv2
 import mediapipe as mp
 import tempfile
 import io
+import imageio
 
 # MediaPipeのPoseモジュールを初期化
 mp_pose = mp.solutions.pose
@@ -21,7 +22,7 @@ if uploaded_file is not None:
     input_video_path = temp_input_file.name
     
     # 処理済み動画を保存する一時ファイル
-    temp_output_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+    temp_output_file = tempfile.NamedTemporaryFile(delete=False, suffix=".avi")
     output_video_path = temp_output_file.name
 
     # 動画を読み込む
