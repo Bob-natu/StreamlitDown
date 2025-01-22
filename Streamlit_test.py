@@ -31,7 +31,7 @@ if uploaded_file is not None:
     fps = int(cap.get(cv2.CAP_PROP_FPS))
 
     # 動画の書き込み設定
-    fourcc = cv2.VideoWriter_fourcc(*"avc1")  # MP4形式
+    fourcc = cv2.VideoWriter_fourcc(*"XVID")  # MP4形式
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
     # MediaPipe Poseを使ってフレームごとに骨格を抽出
