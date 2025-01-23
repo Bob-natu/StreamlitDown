@@ -53,6 +53,9 @@ if uploaded_file is not None:
         # 処理後のフレームを動画ファイルに書き込み
         out.write(frame)
 
+        # フレームを表示
+        st.image(frame, channels="BGR", caption=f"フレーム {frame_count}")
+
     cap.release()
     out.release()
 
