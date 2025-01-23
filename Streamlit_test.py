@@ -3,6 +3,7 @@ import mediapipe as mp
 import streamlit as st
 import tempfile
 import base64
+import os
 
 mp_pose = mp.solutions.pose
 pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
@@ -46,14 +47,23 @@ if uploaded_file is not None:
     with open(output_processed_video_path, "rb") as video_file:
         video_bytes = video_file.read()
 
-    st.write(f"Base64エンコードされた動画データの長さ: {len(video_bytes)} バイト")
+    st.write(f"保存された動画ファイルのサイズ: {os.path.getsize(output_processed_video_path)} バイト")
+    st.write(f"Base64エンコード済みデータ長: {len(video_bytes)} バイト")
 
-    # HTML埋め込みの修正版
+    # HTMLで動画表示
     video_data_url = f"data:video/mp4;base64,{base64.b64encode(video_bytes).decode('utf-8')}"
     st.markdown(
-        f'<video width="600" controls><source src="{video_data_url}" type="video/mp4"></video>',
+        f"""
+        <video width="600" controls>
+            <source src="{video_data_url}" type="video/mp4">
+            お使いのブラウザでは動画を再生できません。
+        </video>
+        """,
         unsafe_allow_html=True
     )
+
+    # st.videoで表示
+    st.video(video_bytes)
 
 else:
     st.info("動画ファイルをアップロードしてください。")
