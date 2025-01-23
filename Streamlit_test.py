@@ -1,6 +1,5 @@
 import cv2
 import mediapipe as mp
-import numpy as np
 import streamlit as st
 import tempfile
 
@@ -20,23 +19,30 @@ if uploaded_file is not None:
 
     # 動画の読み込み
     cap = cv2.VideoCapture(output_video_path)
+    if not cap.isOpened():
+        st.error("動画の読み込みに失敗しました。")
+        st.stop()
+
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    # 出力動画の準備
+    # 一時的に保存する処理後の動画ファイルの準備
     with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_out_file:
         output_processed_video_path = temp_out_file.name
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(output_processed_video_path, fourcc, 30.0, (frame_width, frame_height))
 
     # 動画処理と骨格抽出
+    frame_count = 0
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
 
-        # MediaPipeで骨格を処理
+        frame_count += 1
         image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        
+        # MediaPipeで骨格を処理
         results = pose.process(image_rgb)
 
         # 骨格が検出された場合、ランドマークを描画
@@ -50,6 +56,12 @@ if uploaded_file is not None:
     out.release()
 
     # 処理後の動画をStreamlitで表示
+    st.write(f"処理後の動画を表示します: {output_processed_video_path}")
     with open(output_processed_video_path, 'rb') as f:
         video_bytes = f.read()
+    
+    # バイトデータで表示
     st.video(video_bytes)
+
+else:
+    st.info("動画ファイルをアップロードしてください。")
