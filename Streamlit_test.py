@@ -52,9 +52,6 @@ if uploaded_file is not None:
         # 処理後のフレームを動画ファイルに書き込み
         out.write(frame)
 
-        # デバッグ: 各フレームが処理されたか確認
-        st.write(f"処理中のフレーム: {frame_count}")
-
     cap.release()
     out.release()
 
