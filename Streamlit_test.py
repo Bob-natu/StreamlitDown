@@ -13,6 +13,8 @@ st.sidebar.header("設定")
 # ファイルアップロード
 uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4", "avi", "mov"])
 
+cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_DEBUG)
+
 if uploaded_file is not None:
     # 一時入力ファイルの作成
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_input_file:
