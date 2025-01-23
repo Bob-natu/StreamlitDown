@@ -57,10 +57,12 @@ if uploaded_file is not None:
 
     # 処理後の動画をStreamlitで表示
     st.write(f"処理後の動画を表示します: {output_processed_video_path}")
+    
+    # 処理後の動画をバイナリモードで読み込む
     with open(output_processed_video_path, 'rb') as f:
         video_bytes = f.read()
     
-    # バイトデータで表示
+    # バイナリデータで表示
     st.video(video_bytes)
 
 else:
