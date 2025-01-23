@@ -7,8 +7,7 @@ import tempfile
 import io
 import os
 
-# OpenCVのデバッグログを有効化
-cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_DEBUG)
+
 
 # Streamlit アプリの設定
 st.title("動画解析: 手首と肩の位置プロット")
