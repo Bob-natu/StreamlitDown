@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import streamlit as st
 import tempfile
+import os
 
 # MediaPipeの設定
 mp_pose = mp.solutions.pose
