@@ -53,6 +53,9 @@ if uploaded_file is not None:
         # 処理後のフレームを動画ファイルに書き込み
         out.write(frame)
 
+        # フレームを表示
+        st.image(frame, channels="BGR", caption=f"フレーム {frame_count}")
+
     cap.release()
     out.release()
 
@@ -63,7 +66,7 @@ if uploaded_file is not None:
     # Base64エンコード
     video_base64 = base64.b64encode(video_bytes).decode('utf-8')
 
-    # Streamlitで動画を表示
+    # Streamlitで動画を表示（Base64を使用）
     video_data_url = f"data:video/mp4;base64,{video_base64}"
     st.markdown(f'<video width="600" controls><source src="{video_data_url}" type="video/mp4"></video>', unsafe_allow_html=True)
 
