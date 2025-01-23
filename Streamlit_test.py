@@ -14,40 +14,45 @@ st.sidebar.header("設定")
 uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4", "avi", "mov"])
 
 if uploaded_file is not None:
-    # 一時ファイルの作成
+    # 一時入力ファイルの作成
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_input_file:
-        # アップロードされた動画を保存
         temp_input_file.write(uploaded_file.read())
         temp_input_file.flush()
 
-        st.sidebar.success("動画がアップロードされました。解析を開始します。")
+    st.sidebar.success("動画がアップロードされました。解析を開始します。")
 
-        # MediaPipe Poseの設定
-        mp_pose = mp.solutions.pose
-        mp_drawing = mp.solutions.drawing_utils
+    # MediaPipe Poseの設定
+    mp_pose = mp.solutions.pose
+    mp_drawing = mp.solutions.drawing_utils
 
-        # データ保存用
-        frame_numbers = []
-        right_shoulder_y = []
-        left_shoulder_y = []
-        min_right_wrist_y = float('inf')
-        highest_wrist_image = None
+    # データ保存用
+    frame_numbers = []
+    right_shoulder_y = []
+    left_shoulder_y = []
+    min_right_wrist_y = float('inf')
+    highest_wrist_image = None
 
-        # 動画の読み込み
-        cap = cv2.VideoCapture(temp_input_file.name)
-        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    # 動画の読み込み
+    cap = cv2.VideoCapture(temp_input_file.name)
+    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        # デバッグ用メッセージ
-        st.write(f"動画の解像度: {frame_width}x{frame_height}, フレーム数: {total_frames}, FPS: {fps}")
+    # デバッグ用メッセージ
+    st.write(f"動画の解像度: {frame_width}x{frame_height}, フレーム数: {total_frames}, FPS: {fps}")
 
-        # 出力動画をメモリに保存
-        output_video = io.BytesIO()
-        fourcc = cv2.VideoWriter_fourcc(*'avc1')
-        out = cv2.VideoWriter(temp_input_file.name, fourcc, fps, (frame_width, frame_height))
+    # 一時出力ファイルの作成
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_output_file:
+        output_path = temp_output_file.name
 
+    # VideoWriterの設定
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # H.264が使用できない場合の代替コーデック
+    out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
+
+    if not out.isOpened():
+        st.error("VideoWriterの初期化に失敗しました。コーデックまたは出力パスを確認してください。")
+    else:
         # 進捗バー
         progress_bar = st.progress(0)
 
@@ -63,7 +68,7 @@ if uploaded_file is not None:
                 results = pose.process(frame_rgb)
 
                 # フレーム番号の取得
-                frame_number = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+                frame_number = int(cap.get(cv2.CAP_PROP_POS_FRAMES) - 1)
 
                 if results.pose_landmarks:
                     landmarks = results.pose_landmarks.landmark
@@ -89,7 +94,7 @@ if uploaded_file is not None:
 
                 # 進捗バーの更新
                 progress = int((frame_number / total_frames) * 100)
-                progress_bar.progress(progress)
+                progress_bar.progress(min(progress, 100))
 
             # リソース解放
             cap.release()
@@ -100,13 +105,11 @@ if uploaded_file is not None:
             progress_bar.empty()
 
         # 保存された動画をメモリに読み込む
-        with open(temp_input_file.name, "rb") as video_file:
-            output_video.write(video_file.read())
-
-        output_video.seek(0)  # バッファを先頭に移動
+        with open(output_path, "rb") as video_file:
+            video_bytes = video_file.read()
 
         # 出力動画の表示
-        st.video(output_video)
+        st.video(io.BytesIO(video_bytes))
 
         # 肩と手首の位置データのグラフ化
         if frame_numbers and right_shoulder_y and left_shoulder_y:
