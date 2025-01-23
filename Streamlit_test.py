@@ -47,6 +47,7 @@ if uploaded_file is not None:
     with open(output_processed_video_path, "rb") as video_file:
         video_bytes = video_file.read()
 
+    st.write(f"保存されたファイルパス　: {os.path(output_processed_video_path)}")
     st.write(f"保存された動画ファイルのサイズ: {os.path.getsize(output_processed_video_path)} バイト")
     st.write(f"Base64エンコード済みデータ長: {len(video_bytes)} バイト")
 
