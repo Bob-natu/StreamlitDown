@@ -3,6 +3,7 @@ import mediapipe as mp
 import streamlit as st
 import os
 import tempfile
+import base64
 
 # MediaPipe設定
 mp_pose = mp.solutions.pose
@@ -12,17 +13,17 @@ pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4", "avi", "mov"])
 
 if uploaded_file is not None:
-    # ローカルの一時ディレクトリに保存
-    temp_path = os.path.join(os.getcwd(), "uploaded_video.mp4")  # カレントディレクトリに保存
-    with open(temp_path, "wb") as f:
-        f.write(uploaded_file.getbuffer())
-    
+    # 動画ファイルを保存（Streamlit Cloudであればこれを使います）
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
+        temp_file.write(uploaded_file.read())
+        temp_file_path = temp_file.name
+
     # 動画を開く
-    cap = cv2.VideoCapture(temp_path)
+    cap = cv2.VideoCapture(temp_file_path)
     if not cap.isOpened():
         st.error("動画の読み込みに失敗しました。")
         st.stop()
-    
+
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
@@ -41,7 +42,7 @@ if uploaded_file is not None:
 
         frame_count += 1
         image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        
+
         # MediaPipeで骨格を処理
         results = pose.process(image_rgb)
 
@@ -52,14 +53,22 @@ if uploaded_file is not None:
         # 処理後のフレームを動画ファイルに書き込み
         out.write(frame)
 
+        # フレームを表示
+        st.image(frame, channels="BGR", caption=f"フレーム {frame_count}")
+
     cap.release()
     out.release()
 
-    # 処理後の動画ファイルをStreamlitで表示
-    st.write(f"処理後の動画を表示します: {output_processed_video_path}")
+    # 処理後の動画をBase64エンコードして表示
+    with open(output_processed_video_path, "rb") as video_file:
+        video_bytes = video_file.read()
 
-    # ファイルパスを使って動画を表示
-    st.video(output_processed_video_path)  # ファイルパスで表示
+    # Base64エンコード
+    video_base64 = base64.b64encode(video_bytes).decode('utf-8')
+
+    # Streamlitで動画を表示
+    video_data_url = f"data:video/mp4;base64,{video_base64}"
+    st.markdown(f'<video width="600" controls><source src="{video_data_url}" type="video/mp4"></video>', unsafe_allow_html=True)
 
 else:
     st.info("動画ファイルをアップロードしてください。")
