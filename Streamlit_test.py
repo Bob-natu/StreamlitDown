@@ -43,11 +43,11 @@ if uploaded_file is not None:
     st.write(f"動画の解像度: {frame_width}x{frame_height}, フレーム数: {total_frames}, FPS: {fps}")
 
     # 一時出力ファイルの作成
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_output_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".avi") as temp_output_file:
         output_path = temp_output_file.name
 
     # VideoWriterの設定
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # H.264が使用できない場合の代替コーデック
+    fourcc = cv2.VideoWriter_fourcc(*'XVID')  # H.264が使用できない場合の代替コーデック
     out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
 
     if not out.isOpened():
