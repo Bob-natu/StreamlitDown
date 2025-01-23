@@ -55,7 +55,5 @@ if uploaded_file is not None:
         unsafe_allow_html=True
     )
 
-    # 直接動画表示
-    st.video(video_bytes)
 else:
     st.info("動画ファイルをアップロードしてください。")
