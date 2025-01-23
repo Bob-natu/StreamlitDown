@@ -5,6 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tempfile
 import io
+import os
+
+# OpenCVのデバッグログを有効化
+cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_DEBUG)
 
 # Streamlit アプリの設定
 st.title("動画解析: 手首と肩の位置プロット")
@@ -12,8 +16,6 @@ st.sidebar.header("設定")
 
 # ファイルアップロード
 uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4", "avi", "mov"])
-
-cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_DEBUG)
 
 if uploaded_file is not None:
     # 一時入力ファイルの作成
@@ -45,11 +47,11 @@ if uploaded_file is not None:
     st.write(f"動画の解像度: {frame_width}x{frame_height}, フレーム数: {total_frames}, FPS: {fps}")
 
     # 一時出力ファイルの作成
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".avi") as temp_output_file:
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_output_file:
         output_path = temp_output_file.name
 
     # VideoWriterの設定
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')  # H.264が使用できない場合の代替コーデック
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # コーデックを 'mp4v' に設定
     out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
 
     if not out.isOpened():
@@ -106,12 +108,21 @@ if uploaded_file is not None:
             st.success("解析が完了しました！")
             progress_bar.empty()
 
-        # 保存された動画をメモリに読み込む
+        # 保存された動画の確認
+        if os.path.exists(output_path):
+            file_size = os.path.getsize(output_path)
+            st.write(f"出力動画のサイズ: {file_size} バイト")
+        else:
+            st.error("出力動画ファイルが見つかりませんでした。")
+
+        # 出力動画をメモリに読み込んで表示
         with open(output_path, "rb") as video_file:
             video_bytes = video_file.read()
 
-        # 出力動画の表示
-        st.video(io.BytesIO(video_bytes))
+        if video_bytes:
+            st.video(io.BytesIO(video_bytes))
+        else:
+            st.error("動画データの読み込みに失敗しました。")
 
         # 肩と手首の位置データのグラフ化
         if frame_numbers and right_shoulder_y and left_shoulder_y:
