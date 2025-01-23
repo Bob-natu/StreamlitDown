@@ -30,7 +30,7 @@ if uploaded_file is not None:
     # 一時的に保存する処理後の動画ファイルの準備
     with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_out_file:
         output_processed_video_path = temp_out_file.name
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # コーデックをmp4vに変更
+        fourcc = cv2.VideoWriter_fourcc(*'avc1')  # コーデックをmp4vに変更
         out = cv2.VideoWriter(output_processed_video_path, fourcc, 30.0, (frame_width, frame_height))
 
     # 動画処理と骨格抽出
