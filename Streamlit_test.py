@@ -44,6 +44,7 @@ if uploaded_file is not None:
     out.release()
 
     st.write(f"保存されたファイルパス: {output_processed_video_path}")
+    st.video(output_processed_video_path)
 
 else:
     st.info("動画ファイルをアップロードしてください。")
