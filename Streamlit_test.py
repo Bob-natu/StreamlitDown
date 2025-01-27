@@ -8,7 +8,7 @@ import subprocess
 import matplotlib.pyplot as plt
 
 # Streamlit アプリの設定
-st.title("動画解析: 手首と肩の位置プロット")
+st.title("スパイク解析とグラフ進行")
 st.sidebar.header("設定")
 
 # ファイルアップロード
@@ -44,7 +44,7 @@ if uploaded_file is not None:
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
             # 出力動画設定
-            output_video_path = os.path.join(temp_dir, "output_video_with_skeleton.mp4")
+            output_video_path = os.path.join(temp_dir, "output_video_with_skeleton_and_graph.mp4")
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # エンコーディングフォーマット
             out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
@@ -84,6 +84,28 @@ if uploaded_file is not None:
                         # 骨格の描画
                         mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
+                    # グラフの作成
+                    fig, ax = plt.subplots(figsize=(6, 3))  # グラフのサイズを調整
+                    ax.plot(frame_numbers, [1 - y for y in right_shoulder_y], label="Right Shoulder Y", color="blue")
+                    ax.plot(frame_numbers, [1 - y for y in left_shoulder_y], label="Left Shoulder Y", color="green")
+                    ax.set_xlabel("Frame Number")
+                    ax.set_ylabel("Normalized Y Coordinate")
+                    ax.set_title("Shoulder and Wrist Positions Over Time")
+                    ax.legend()
+                    plt.tight_layout()
+
+                    # グラフを画像として保存
+                    graph_image_path = os.path.join(temp_dir, "graph_image.png")
+                    fig.savefig(graph_image_path, format="png")
+                    plt.close(fig)
+
+                    # グラフ画像を読み込んでフレームに重ね合わせ
+                    graph_image = cv2.imread(graph_image_path)
+                    graph_resized = cv2.resize(graph_image, (frame_width, int(frame_height / 4)))  # グラフを小さくリサイズ
+
+                    # グラフ画像を元のフレームに重ね合わせ
+                    frame[frame_height - graph_resized.shape[0]:, 0:frame_width] = graph_resized
+
                     # フレームを保存
                     out.write(frame)
 
@@ -104,28 +126,8 @@ if uploaded_file is not None:
                 st.download_button(
                     label="解析した動画をダウンロード",
                     data=f,
-                    file_name="output_video_with_skeleton.mp4",
+                    file_name="output_video_with_skeleton_and_graph.mp4",
                     mime="video/mp4"
-                )
-
-            # 肩と手首の位置データのグラフ化
-            fig, ax = plt.subplots(figsize=(10, 5))
-            ax.plot(frame_numbers, [1 - y for y in right_shoulder_y], label="Right Shoulder Y", color="blue")
-            ax.plot(frame_numbers, [1 - y for y in left_shoulder_y], label="Left Shoulder Y", color="green")
-            ax.set_xlabel("Frame Number")
-            ax.set_ylabel("Normalized Y Coordinate")
-            ax.set_title("Shoulder and Wrist Positions Over Time")
-            ax.legend()
-            plt.tight_layout()
-            st.pyplot(fig)
-
-            # 右手首の最高到達点の画像表示
-            if highest_wrist_image is not None:
-                st.image(
-                    highest_wrist_image, 
-                    caption="右手首の最高到達点", 
-                    use_container_width=True,  # Updated parameter
-                    channels="BGR"
                 )
 
         except Exception as e:
