@@ -5,8 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import tempfile
-import io
-import subprocess
 
 # Streamlit アプリの設定
 st.title("動画解析: 手首と肩の位置プロット")
@@ -46,15 +44,8 @@ if uploaded_file is not None:
 
             # 出力動画設定
             output_video_path = os.path.join(temp_dir, "output_video_with_plot.mp4")
-            # 動画をメモリ内でエンコード
-            with io.BytesIO() as video_stream:
-                subprocess.run(
-                    ["ffmpeg", "-i", input_video_path, "-vcodec", "libx264", "-crf", "23", "-preset", "fast", "-f", "mp4", "-"],
-                    stdout=video_stream,
-                    stderr=subprocess.PIPE
-                )
-                video_stream.seek(0)
-            
+            fourcc = cv2.VideoWriter_fourcc(*'avc1')
+            out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
             # 進捗バー
             progress_bar = st.progress(0)
@@ -93,20 +84,22 @@ if uploaded_file is not None:
                         mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
                     # フレームの保存
-                    
+                    out.write(frame)
+
                     # 進捗バーの更新
                     progress = int((frame_number / total_frames) * 100)
                     progress_bar.progress(progress)
 
             # リソース解放
             cap.release()
+            out.release()
 
             # 動画解析完了
             st.success("解析が完了しました！")
             progress_bar.empty()
 
             # 出力動画の表示
-            st.video(video_stream)
+            st.video(output_video_path)
 
             # 肩と手首の位置データのグラフ化
             fig, ax = plt.subplots(figsize=(10, 5))
@@ -127,6 +120,7 @@ if uploaded_file is not None:
                     use_container_width=True,  # Updated parameter
                     channels="BGR"
                 )
-            
+            os.system(f"ffmpeg -i {input_video_path} -vcodec libx264 -crf 23 -preset fast {output_video_path}")
+
         except Exception as e:
             st.error(f"エラーが発生しました: {e}")
