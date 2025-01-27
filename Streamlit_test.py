@@ -1,50 +1,128 @@
+import streamlit as st
 import cv2
 import mediapipe as mp
-import streamlit as st
+import matplotlib.pyplot as plt
+import numpy as np
+import os
 import tempfile
-from mediapipe.python.solutions.drawing_utils import draw_landmarks  # 明示的にインポート
 
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
+# Streamlit アプリの設定
+st.title("動画解析: 手首と肩の位置プロット")
+st.sidebar.header("設定")
 
+# ファイルアップロード
 uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4", "avi", "mov"])
 
 if uploaded_file is not None:
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_file:
-        temp_file.write(uploaded_file.read())
-        temp_file_path = temp_file.name
+    # 一時ディレクトリの作成と安全な管理
+    with tempfile.TemporaryDirectory() as temp_dir:
+        try:
+            # 動画ファイルを保存
+            input_video_path = os.path.join(temp_dir, uploaded_file.name)
+            with open(input_video_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            
+            st.sidebar.success("動画がアップロードされました。解析を開始します。")
 
-    cap = cv2.VideoCapture(temp_file_path)
-    if not cap.isOpened():
-        st.error("動画の読み込みに失敗しました。")
-        st.stop()
+            # MediaPipe Poseの設定
+            mp_pose = mp.solutions.pose
+            mp_drawing = mp.solutions.drawing_utils
 
-    frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            # データ保存用
+            frame_numbers = []
+            right_shoulder_y = []
+            left_shoulder_y = []
+            min_right_wrist_y = float('inf')
+            highest_wrist_image = None
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_out_file:
-        output_processed_video_path = temp_out_file.name
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_processed_video_path, fourcc, 30.0, (frame_width, frame_height))
+            # 動画の読み込み
+            cap = cv2.VideoCapture(input_video_path)
+            frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    while cap.isOpened():
-        ret, frame = cap.read()
-        if not ret:
-            break
+            # 出力動画設定
+            output_video_path = os.path.join(temp_dir, "output_video_with_plot.mp4")
+            fourcc = cv2.VideoWriter_fourcc(*'avc1')
+            out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
-        image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = pose.process(image_rgb)
+            # 進捗バー
+            progress_bar = st.progress(0)
 
-        if results.pose_landmarks:
-            draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+            # Poseインスタンスの作成
+            with mp_pose.Pose(static_image_mode=False, model_complexity=1) as pose:
+                while cap.isOpened():
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
 
-        out.write(frame)
+                    # フレームをRGBに変換してMediaPipeで処理
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    results = pose.process(frame_rgb)
 
-    cap.release()
-    out.release()
+                    # フレーム番号の取得
+                    frame_number = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
 
-    st.write(f"保存されたファイルパス: {output_processed_video_path}")
-    st.video(output_processed_video_path)
+                    if results.pose_landmarks:
+                        landmarks = results.pose_landmarks.landmark
+                        right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
+                        left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
+                        right_wrist = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST]
 
-else:
-    st.info("動画ファイルをアップロードしてください。")
+                        # データの記録
+                        frame_numbers.append(frame_number)
+                        right_shoulder_y.append(right_shoulder.y)
+                        left_shoulder_y.append(left_shoulder.y)
+
+                        # 手首の最高点の記録
+                        if right_wrist.y < min_right_wrist_y:
+                            min_right_wrist_y = right_wrist.y
+                            highest_wrist_image = frame.copy()
+
+                        # 骨格の描画
+                        mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+
+                    # フレームの保存
+                    out.write(frame)
+
+                    # 進捗バーの更新
+                    progress = int((frame_number / total_frames) * 100)
+                    progress_bar.progress(progress)
+
+            # リソース解放
+            cap.release()
+            out.release()
+
+            # 動画解析完了
+            st.success("解析が完了しました！")
+            progress_bar.empty()
+
+            # 出力動画の表示
+            st.video(output_video_path)
+
+            # 肩と手首の位置データのグラフ化
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(frame_numbers, [1 - y for y in right_shoulder_y], label="Right Shoulder Y", color="blue")
+            ax.plot(frame_numbers, [1 - y for y in left_shoulder_y], label="Left Shoulder Y", color="green")
+            ax.set_xlabel("Frame Number")
+            ax.set_ylabel("Normalized Y Coordinate")
+            ax.set_title("Shoulder and Wrist Positions Over Time")
+            ax.legend()
+            plt.tight_layout()
+            st.pyplot(fig)
+
+            # 右手首の最高到達点の画像表示
+            if highest_wrist_image is not None:
+                st.image(
+                    highest_wrist_image, 
+                    caption="右手首の最高到達点", 
+                    use_container_width=True,  # Updated parameter
+                    channels="BGR"
+                )
+
+        except Exception as e:
+            st.error(f"エラーが発生しました: {e}")
+
+        finally:
+            st.info("一時ファイルをクリーンアップしました。")
