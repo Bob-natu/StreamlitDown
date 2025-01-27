@@ -5,7 +5,6 @@ import numpy as np
 import os
 import tempfile
 import subprocess
-import io
 import matplotlib.pyplot as plt
 
 # Streamlit アプリの設定
@@ -100,8 +99,14 @@ if uploaded_file is not None:
             st.success("解析が完了しました！")
             progress_bar.empty()
 
-            # 骨格抽出した動画を表示
-            st.video(output_video_path)
+            # ダウンロードリンクを提供
+            with open(output_video_path, "rb") as f:
+                st.download_button(
+                    label="解析した動画をダウンロード",
+                    data=f,
+                    file_name="output_video_with_skeleton.mp4",
+                    mime="video/mp4"
+                )
 
             # 肩と手首の位置データのグラフ化
             fig, ax = plt.subplots(figsize=(10, 5))
