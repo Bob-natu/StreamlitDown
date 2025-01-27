@@ -43,7 +43,7 @@ if uploaded_file is not None:
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
             # 出力動画設定
-            output_video_path = os.path.join(temp_dir, "output_video_with_plot.mp4")
+            output_video_path = os.path.join(temp_dir, "output_video_with_plot.avi")
             fourcc = cv2.VideoWriter_fourcc(*'MJPG')
             out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
