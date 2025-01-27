@@ -93,12 +93,17 @@ if uploaded_file is not None:
 
             # メモリ内でエンコードして動画を保存（ffmpegでエンコード）
             with io.BytesIO() as video_stream:
-                subprocess.run(
+                process = subprocess.Popen(
                     ["ffmpeg", "-i", input_video_path, "-vcodec", "libx264", "-crf", "23", "-preset", "fast", "-f", "mp4", "-"],
-                    stdout=video_stream,
+                    stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE
                 )
-                video_stream.seek(0)
+
+                # 出力を動画ストリームに読み込み
+                video_stream.write(process.stdout.read())
+                video_stream.seek(0)  # ストリームの先頭に戻す
+
+                # 動画を表示
                 st.video(video_stream)
 
             # 肩と手首の位置データのグラフ化
