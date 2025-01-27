@@ -4,11 +4,10 @@ import mediapipe as mp
 import numpy as np
 import os
 import tempfile
-import subprocess
 import matplotlib.pyplot as plt
 
 # Streamlit アプリの設定
-st.title("スパイク解析とグラフ進行")
+st.title("スパイク解析: 骨格と進行グラフ")
 st.sidebar.header("設定")
 
 # ファイルアップロード
@@ -35,6 +34,7 @@ if uploaded_file is not None:
             left_shoulder_y = []
             min_right_wrist_y = float('inf')
             highest_wrist_image = None
+            highest_frame_number = None
 
             # 動画の読み込み
             cap = cv2.VideoCapture(input_video_path)
@@ -43,10 +43,12 @@ if uploaded_file is not None:
             fps = cap.get(cv2.CAP_PROP_FPS)
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-            # 出力動画設定
+            # 出力動画設定（動画の右側にグラフを追加するために幅を増加）
+            output_width = frame_width + 400  # フレームに余白を追加
+            output_height = frame_height
             output_video_path = os.path.join(temp_dir, "output_video_with_skeleton_and_graph.mp4")
             fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # エンコーディングフォーマット
-            out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+            out = cv2.VideoWriter(output_video_path, fourcc, fps, (output_width, output_height))
 
             # 進捗バー
             progress_bar = st.progress(0)
@@ -80,34 +82,37 @@ if uploaded_file is not None:
                         if right_wrist.y < min_right_wrist_y:
                             min_right_wrist_y = right_wrist.y
                             highest_wrist_image = frame.copy()
+                            highest_frame_number = frame_number
 
                         # 骨格の描画
                         mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-                    # グラフの作成
-                    fig, ax = plt.subplots(figsize=(6, 3))  # グラフのサイズを調整
+                    # グラフの作成（進行中）
+                    fig, ax = plt.subplots(figsize=(4, 3))  # グラフのサイズを調整
                     ax.plot(frame_numbers, [1 - y for y in right_shoulder_y], label="Right Shoulder Y", color="blue")
                     ax.plot(frame_numbers, [1 - y for y in left_shoulder_y], label="Left Shoulder Y", color="green")
+                    ax.set_xlim(0, total_frames)
                     ax.set_xlabel("Frame Number")
                     ax.set_ylabel("Normalized Y Coordinate")
-                    ax.set_title("Shoulder and Wrist Positions Over Time")
                     ax.legend()
                     plt.tight_layout()
 
                     # グラフを画像として保存
                     graph_image_path = os.path.join(temp_dir, "graph_image.png")
-                    fig.savefig(graph_image_path, format="png")
+                    fig.savefig(graph_image_path, format="png", dpi=100)
                     plt.close(fig)
 
-                    # グラフ画像を読み込んでフレームに重ね合わせ
+                    # グラフ画像を読み込み
                     graph_image = cv2.imread(graph_image_path)
-                    graph_resized = cv2.resize(graph_image, (frame_width, int(frame_height / 4)))  # グラフを小さくリサイズ
+                    graph_resized = cv2.resize(graph_image, (400, frame_height))  # グラフを縦いっぱいにリサイズ
 
-                    # グラフ画像を元のフレームに重ね合わせ
-                    frame[frame_height - graph_resized.shape[0]:, 0:frame_width] = graph_resized
+                    # フレームにグラフを合成
+                    combined_frame = np.zeros((frame_height, output_width, 3), dtype=np.uint8)
+                    combined_frame[:, :frame_width] = frame  # 左側に元のフレーム
+                    combined_frame[:, frame_width:] = graph_resized  # 右側にグラフ
 
                     # フレームを保存
-                    out.write(frame)
+                    out.write(combined_frame)
 
                     # 進捗バーの更新
                     progress = int((frame_number / total_frames) * 100)
@@ -128,6 +133,26 @@ if uploaded_file is not None:
                     data=f,
                     file_name="output_video_with_skeleton_and_graph.mp4",
                     mime="video/mp4"
+                )
+
+            # 完成したグラフを表示
+            fig, ax = plt.subplots(figsize=(10, 5))
+            ax.plot(frame_numbers, [1 - y for y in right_shoulder_y], label="Right Shoulder Y", color="blue")
+            ax.plot(frame_numbers, [1 - y for y in left_shoulder_y], label="Left Shoulder Y", color="green")
+            ax.set_xlabel("Frame Number")
+            ax.set_ylabel("Normalized Y Coordinate")
+            ax.set_title("Shoulder and Wrist Positions Over Time")
+            ax.legend()
+            plt.tight_layout()
+            st.pyplot(fig)
+
+            # 右手首の最高到達点のフレームを表示
+            if highest_wrist_image is not None:
+                st.image(
+                    highest_wrist_image, 
+                    caption=f"右手首が最高到達点に達したフレーム: {highest_frame_number}",
+                    use_column_width=True,
+                    channels="BGR"
                 )
 
         except Exception as e:
