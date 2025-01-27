@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import tempfile
+import subprocess
+import io
 
 # Streamlit アプリの設定
 st.title("動画解析: 手首と肩の位置プロット")
@@ -42,11 +44,6 @@ if uploaded_file is not None:
             fps = cap.get(cv2.CAP_PROP_FPS)
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-            # 出力動画設定
-            output_video_path = os.path.join(temp_dir, "output_video_with_plot.mp4")
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-            out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
-
             # 進捗バー
             progress_bar = st.progress(0)
 
@@ -83,23 +80,26 @@ if uploaded_file is not None:
                         # 骨格の描画
                         mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-                    # フレームの保存
-                    out.write(frame)
-
                     # 進捗バーの更新
                     progress = int((frame_number / total_frames) * 100)
                     progress_bar.progress(progress)
 
             # リソース解放
             cap.release()
-            out.release()
 
             # 動画解析完了
             st.success("解析が完了しました！")
             progress_bar.empty()
 
-            # 出力動画の表示
-            st.video(output_video_path)
+            # メモリ内でエンコードして動画を保存（ffmpegでエンコード）
+            with io.BytesIO() as video_stream:
+                subprocess.run(
+                    ["ffmpeg", "-i", input_video_path, "-vcodec", "libx264", "-crf", "23", "-preset", "fast", "-f", "mp4", "-"],
+                    stdout=video_stream,
+                    stderr=subprocess.PIPE
+                )
+                video_stream.seek(0)
+                st.video(video_stream)
 
             # 肩と手首の位置データのグラフ化
             fig, ax = plt.subplots(figsize=(10, 5))
