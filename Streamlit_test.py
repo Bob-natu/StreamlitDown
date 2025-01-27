@@ -120,6 +120,7 @@ if uploaded_file is not None:
                     use_container_width=True,  # Updated parameter
                     channels="BGR"
                 )
+            os.system(f"ffmpeg -i {input_video_path} -vcodec libx264 -crf 23 -preset fast {output_video_path}")
 
         except Exception as e:
             st.error(f"エラーが発生しました: {e}")
