@@ -1,12 +1,12 @@
 import streamlit as st
 import cv2
 import mediapipe as mp
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import tempfile
 import subprocess
 import io
+import plotly as plt
 
 # Streamlit アプリの設定
 st.title("動画解析: 手首と肩の位置プロット")
@@ -44,6 +44,11 @@ if uploaded_file is not None:
             fps = cap.get(cv2.CAP_PROP_FPS)
             total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
+            # 出力動画設定
+            output_video_path = os.path.join(temp_dir, "output_video_with_skeleton.mp4")
+            fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # エンコーディングフォーマット
+            out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+
             # 進捗バー
             progress_bar = st.progress(0)
 
@@ -80,31 +85,23 @@ if uploaded_file is not None:
                         # 骨格の描画
                         mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
+                    # フレームを保存
+                    out.write(frame)
+
                     # 進捗バーの更新
                     progress = int((frame_number / total_frames) * 100)
                     progress_bar.progress(progress)
 
             # リソース解放
             cap.release()
+            out.release()
 
             # 動画解析完了
             st.success("解析が完了しました！")
             progress_bar.empty()
 
-            # メモリ内でエンコードして動画を保存（ffmpegでエンコード）
-            with io.BytesIO() as video_stream:
-                process = subprocess.Popen(
-                    ["ffmpeg", "-i", input_video_path, "-vcodec", "libx264", "-crf", "23", "-preset", "fast", "-f", "mp4", "-"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE
-                )
-
-                # 出力を動画ストリームに読み込み
-                video_stream.write(process.stdout.read())
-                video_stream.seek(0)  # ストリームの先頭に戻す
-
-                # 動画を表示
-                st.video(video_stream)
+            # 骨格抽出した動画を表示
+            st.video(output_video_path)
 
             # 肩と手首の位置データのグラフ化
             fig, ax = plt.subplots(figsize=(10, 5))
