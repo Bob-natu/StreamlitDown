@@ -151,7 +151,7 @@ if uploaded_file is not None:
                 st.image(
                     highest_wrist_image, 
                     caption=f"右手首が最高到達点に達したフレーム: {highest_frame_number}",
-                    use_column_width=True,
+                    use_container_width=True,  # Updated parameter
                     channels="BGR"
                 )
 
