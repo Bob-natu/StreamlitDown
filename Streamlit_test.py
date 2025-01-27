@@ -44,7 +44,7 @@ if uploaded_file is not None:
 
             # 出力動画設定
             output_video_path = os.path.join(temp_dir, "output_video_with_plot.mp4")
-            fourcc = cv2.VideoWriter_fourcc(*'avc1')
+            fourcc = cv2.VideoWriter_fourcc(*'libx264')
             out = cv2.VideoWriter(output_video_path, fourcc, round(fps), (frame_width, frame_height))
 
             # 進捗バー
