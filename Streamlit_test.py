@@ -6,7 +6,7 @@ import os
 import tempfile
 import subprocess
 import io
-import plotly as plt
+import matplotlib.pyplot as plt
 
 # Streamlit アプリの設定
 st.title("動画解析: 手首と肩の位置プロット")
