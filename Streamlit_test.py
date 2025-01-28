@@ -11,7 +11,7 @@ st.title("スパイク解析: 骨格と進行グラフ")
 st.sidebar.header("設定")
 
 # ファイルアップロード
-uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4"])
+uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4","avi", "mov"])
 
 if uploaded_file is not None:
     # 一時ディレクトリの作成と安全な管理
