@@ -141,7 +141,6 @@ if uploaded_file is not None:
         # リソース解放
         cap.release()
         out.release()
-        cv2.destroyAllWindows()
 
     # 動画ダウンロードボタン
     with open(output_video_path, "rb") as f:
