@@ -97,9 +97,11 @@ if uploaded_file is not None:
             line_left.set_data(frame_numbers, [1 - y for y in left_shoulder_y])
             if min_right_shoulder_frame > 0:
                 highest_right_shoulder.set_data([min_right_shoulder_frame], [1 - min_right_shoulder_y])
+            if min_right_wrist_frame > 0:
+                highest_right_wrist.set_data([min_right_wrist_frame], [1 - min_right_wrist_y])
             ax.relim()
             ax.autoscale_view()
-            plt.pause(0.05)
+            plt.pause(0.001)
             
             # グラフを画像化して動画フレームに合成
             graph_image_path = "/tmp/graph_frame.jpg"
