@@ -45,7 +45,7 @@ if uploaded_file is not None:
     fps = cap.get(cv2.CAP_PROP_FPS)
     
     # 新しい動画フレームの幅を設定（動画の右側にスペースを作成）
-    new_frame_width = frame_width + frame_width // 2  # 右半分をグラフ用に空ける
+    new_frame_width = frame_width + (frame_width // 2)  # 右半分をグラフ用に空ける
     
     # 出力動画設定（新しい幅を使用）
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
@@ -104,7 +104,7 @@ if uploaded_file is not None:
                 highest_right_wrist.set_data([min_right_wrist_frame], [1 - min_right_wrist_y])
             ax.relim()
             ax.autoscale_view()
-            plt.pause(0.05)
+            plt.pause(0.001)
             
             # グラフを画像化して新しいサイズのフレームに合成
             graph_image_path = "/tmp/graph_frame.jpg"
@@ -114,7 +114,8 @@ if uploaded_file is not None:
                 # グラフを新しいフレームの右側に配置
                 graph_resized = cv2.resize(graph_image, (frame_width // 2, frame_height))  # 右側に配置
                 h, w, _ = graph_resized.shape
-                frame[0:h, frame_width:frame_width + w] = graph_resized  # 右半分に配置
+                if w > 0:  # 幅が0でないことを確認
+                    frame[0:h, frame_width:frame_width + w] = graph_resized  # 右半分に配置
             
             # 右側にグラフを貼り付けた新しい動画フレームを出力
             out.write(frame)
