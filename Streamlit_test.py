@@ -110,7 +110,7 @@ if uploaded_file is not None:
             if graph_image is not None:
                 graph_resized = cv2.resize(graph_image, (frame_width // 2, frame_height // 2))
                 h, w, _ = graph_resized.shape
-                frame[10:10+h, 10:10+w] = graph_resized
+                frame[10:10+h, frame_width - w - 10:frame_width - 10] = graph_resized
             
             out.write(frame)
             
