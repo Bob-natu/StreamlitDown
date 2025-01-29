@@ -110,12 +110,20 @@ if uploaded_file is not None:
             graph_image_path = "/tmp/graph_frame.jpg"
             plt.savefig(graph_image_path)
             graph_image = cv2.imread(graph_image_path)
+
             if graph_image is not None:
-                # グラフを新しいフレームの右側に配置
-                graph_resized = cv2.resize(graph_image, (frame_width // 2, frame_height))  # 右側に配置
+                # グラフ画像をリサイズ
+                graph_resized = cv2.resize(graph_image, (frame_width // 2, frame_height // 2))
+                
+                # リサイズされたグラフの高さと幅を取得
                 h, w, _ = graph_resized.shape
-                if w > 0:  # 幅が0でないことを確認
-                    frame[0:h, frame_width:frame_width + w] = graph_resized  # 右半分に配置
+                
+                # グラフをフレームの右側に配置 (右端に合わせて配置)
+                if frame_width - w - 10 >= 0:
+                    frame[0:h, frame_width - w - 10:frame_width - 10] = graph_resized
+                else:
+                    # フレームにグラフが収まらない場合の処理（例: エラーメッセージ）
+                    print("グラフがフレームに収まりません。サイズを調整してください。")
             
             # 右側にグラフを貼り付けた新しい動画フレームを出力
             out.write(frame)
