@@ -51,10 +51,10 @@ if uploaded_file is not None:
     # グラフの初期設定
     plt.ion()
     fig, ax = plt.subplots(figsize=(5, 3))
-    line_right, = ax.plot([], [], label="Right Shoulder Y", color="blue")
-    line_left, = ax.plot([], [], label="Left Shoulder Y", color="green")
-    highest_right_shoulder, = ax.plot([], [], 'ro', label="Highest Right Shoulder")
-    highest_right_wrist, = ax.plot([], [], 'go', label="Highest Right Wrist")
+    line_right, = ax.plot([], [], label="Right Shoulder Y", color="blue", alpha=0.7)
+    line_left, = ax.plot([], [], label="Left Shoulder Y", color="green", alpha=0.7)
+    highest_right_shoulder, = ax.plot([], [], 'ro', label="Highest Right Shoulder", alpha=0.7)
+    highest_right_wrist, = ax.plot([], [], 'go', label="Highest Right Wrist", alpha=0.7)
     ax.set_xlabel("Frame Number")
     ax.set_ylabel("Y Coordinate (Flipped)")
     ax.legend()
@@ -108,9 +108,10 @@ if uploaded_file is not None:
             plt.savefig(graph_image_path)
             graph_image = cv2.imread(graph_image_path)
             if graph_image is not None:
-                graph_resized = cv2.resize(graph_image, (frame_width // 2, frame_height // 2))
+                # グラフのサイズ調整と配置
+                graph_resized = cv2.resize(graph_image, (frame_width // 2, frame_height))  # 右側に配置
                 h, w, _ = graph_resized.shape
-                frame[10:10+h, frame_width - w - 10:frame_width - 10] = graph_resized
+                frame[0:h, frame_width // 2:frame_width] = graph_resized  # 右半分に配置
             
             out.write(frame)
             
