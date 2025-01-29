@@ -28,10 +28,15 @@ if uploaded_file is not None:
     frame_numbers = []
     right_shoulder_y = []
     left_shoulder_y = []
+    right_wrist_y = []
     
     # 右肩の最高到達点データ
     min_right_shoulder_y = float('inf')  # 右肩の最小Y座標（最高到達点）
     min_right_shoulder_frame = -1  # 最高到達点のフレーム番号
+    
+    # 右手首の最高到達点データ
+    min_right_wrist_y = float('inf')  # 右手首の最小Y座標（最高到達点）
+    min_right_wrist_frame = -1  # 最高到達点のフレーム番号
     
     # 動画読み込み
     cap = cv2.VideoCapture(input_video_path)
@@ -47,7 +52,9 @@ if uploaded_file is not None:
     plt.ion()
     fig, ax = plt.subplots(figsize=(5, 3))
     line_right, = ax.plot([], [], label="Right Shoulder Y", color="blue")
-    highest_point, = ax.plot([], [], 'ro', label="Highest Right Shoulder")
+    line_left, = ax.plot([], [], label="Left Shoulder Y", color="green")
+    highest_right_shoulder, = ax.plot([], [], 'ro', label="Highest Right Shoulder")
+    highest_right_wrist, = ax.plot([], [], 'go', label="Highest Right Wrist")
     ax.set_xlabel("Frame Number")
     ax.set_ylabel("Y Coordinate (Flipped)")
     ax.legend()
@@ -65,21 +72,33 @@ if uploaded_file is not None:
             if results.pose_landmarks:
                 landmarks = results.pose_landmarks.landmark
                 right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
+                left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
+                right_wrist = landmarks[mp_pose.PoseLandmark.RIGHT_WRIST]
                 
                 frame_numbers.append(frame_number)
                 right_shoulder_y.append(right_shoulder.y)
+                left_shoulder_y.append(left_shoulder.y)
+                right_wrist_y.append(right_wrist.y)
                 
                 # 右肩の最高到達点を記録
                 if right_shoulder.y < min_right_shoulder_y:
                     min_right_shoulder_y = right_shoulder.y
                     min_right_shoulder_frame = frame_number
                 
-                mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+                # 右手首の最高到達点を記録
+                if right_wrist.y < min_right_wrist_y:
+                    min_right_wrist_y = right_wrist.y
+                    min_right_wrist_frame = frame_number
                 
+                mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+            
             # グラフ更新
             line_right.set_data(frame_numbers, [1 - y for y in right_shoulder_y])
+            line_left.set_data(frame_numbers, [1 - y for y in left_shoulder_y])
             if min_right_shoulder_frame > 0:
-                highest_point.set_data([min_right_shoulder_frame], [1 - min_right_shoulder_y])
+                highest_right_shoulder.set_data([min_right_shoulder_frame], [1 - min_right_shoulder_y])
+            if min_right_wrist_frame > 0:
+                highest_right_wrist.set_data([min_right_wrist_frame], [1 - min_right_wrist_y])
             ax.relim()
             ax.autoscale_view()
             plt.pause(0.001)
@@ -102,3 +121,7 @@ if uploaded_file is not None:
     # 動画ダウンロードボタン
     with open(output_video_path, "rb") as f:
         st.download_button("動画をダウンロード", f, file_name="processed_video.mp4", mime="video/mp4")
+    
+    # 右肩と右手首の最高到達点のフレームを表示
+    st.write(f"右肩の最高到達点のフレーム: {min_right_shoulder_frame}")
+    st.write(f"右手首の最高到達点のフレーム: {min_right_wrist_frame}")
