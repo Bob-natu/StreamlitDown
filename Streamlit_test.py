@@ -4,6 +4,8 @@ import mediapipe as mp
 import math
 import matplotlib.pyplot as plt
 import os
+import numpy as np
+from io import BytesIO
 
 # Streamlit UI設定
 st.title("肩の位置追跡とグラフ作成")
@@ -54,7 +56,7 @@ if uploaded_file is not None:
 
     # 出力動画設定
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+    out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height + 150))  # グラフの高さを150に変更
     if not out.isOpened():
         st.error(f"出力動画を作成できません: {output_video_path}")
         st.stop()
@@ -62,16 +64,26 @@ if uploaded_file is not None:
     # グラフの初期設定
     plt.ion()
     fig, ax = plt.subplots(figsize=(10, 5))
-    line_right, = ax.plot([], [], label="Right Shoulder Y", color="blue")
-    line_left, = ax.plot([], [], label="Left Shoulder Y", color="green")
-    highest_point, = ax.plot([], [], 'ro', label="Highest Right Shoulder")
+    
+    # グラフの背景色を設定
+    ax.set_facecolor('#f0f0f0')  # グレー背景
+    
+    # 線のスタイルを調整（太さや色）
+    line_right, = ax.plot([], [], label="Right Shoulder Y", color="blue", linewidth=2)
+    line_left, = ax.plot([], [], label="Left Shoulder Y", color="green", linewidth=2)
+    highest_point, = ax.plot([], [], 'ro', label="Highest Right Shoulder", markersize=8)
+    
+    # 軸のラベルやタイトルのフォントサイズを調整
     ax.set_xlim(0, total_frames)
     ax.set_ylim(0, 1)
-    ax.set_xlabel("Frame Number")
-    ax.set_ylabel("Y Coordinate (Flipped)")
-    ax.set_title("Shoulder Coordinates Over Time")
-    ax.legend()
+    ax.set_xlabel("Frame Number", fontsize=12)
+    ax.set_ylabel("Y Coordinate (Flipped)", fontsize=12)
+    ax.set_title("Shoulder Coordinates Over Time", fontsize=14)
+    ax.legend(fontsize=10)
 
+    # 目盛りのサイズを変更
+    ax.tick_params(axis='both', which='major', labelsize=10)
+    
     # Pose インスタンス作成
     with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
         while cap.isOpened():
@@ -135,12 +147,26 @@ if uploaded_file is not None:
             ax.set_xlim(0, max(10, frame_number + 10))
             plt.pause(0.001)
 
+            # グラフを画像に変換
+            buf = BytesIO()
+            fig.savefig(buf, format='png')
+            buf.seek(0)
+
+            # バッファをNumPy配列として読み込む
+            graph_image = np.array(bytearray(buf.read()), dtype=np.uint8)
+            graph_image = cv2.imdecode(graph_image, cv2.IMREAD_COLOR)
+
+            # グラフを動画フレームの下部に結合
+            graph_resized = cv2.resize(graph_image, (frame_width, 150))  # グラフを150ピクセルに調整
+            frame_with_graph = np.vstack([frame, graph_resized])  # 縦に結合
+
             # 動画保存
-            out.write(frame)
+            out.write(frame_with_graph)
             
         # リソース解放
         cap.release()
         out.release()
+        cv2.destroyAllWindows()
 
     # 動画ダウンロードボタン
     with open(output_video_path, "rb") as f:
