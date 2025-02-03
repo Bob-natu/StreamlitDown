@@ -1,39 +1,57 @@
+import streamlit as st
 import cv2 as cv
 import mediapipe as mp
 import tempfile
+import os
 
-# MediaPipe Poseのセットアップ
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose()
-mp_drawing = mp.solutions.drawing_utils
+def process_video(input_path, output_path):
+    mp_pose = mp.solutions.pose
+    pose = mp_pose.Pose()
+    mp_drawing = mp.solutions.drawing_utils
+    
+    video = cv.VideoCapture(input_path)
+    frame_width = int(video.get(cv.CAP_PROP_FRAME_WIDTH))
+    frame_height = int(video.get(cv.CAP_PROP_FRAME_HEIGHT))
+    fps = video.get(cv.CAP_PROP_FPS)
+    
+    out = cv.VideoWriter(output_path, cv.VideoWriter_fourcc(*'mp4v'), fps, (frame_width, frame_height))
+    
+    while video.isOpened():
+        ret, frame = video.read()
+        if not ret:
+            break
+        
+        frame_rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
+        results = pose.process(frame_rgb)
+        
+        if results.pose_landmarks:
+            mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+        
+        out.write(frame)
+    
+    video.release()
+    out.release()
+    pose.close()
 
-# 一時ファイルに保存（ローカル確認用）
-output_path = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False).name
-print(f"Output path for verification: {output_path}")
+def main():
+    st.title("Pose Estimation Video Processing")
+    
+    uploaded_file = st.file_uploader("Upload a video file", type=["mp4", "mov", "avi"])
+    
+    if uploaded_file is not None:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_input:
+            temp_input.write(uploaded_file.read())
+            input_path = temp_input.name
+        
+        output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+        
+        st.info("Processing video... Please wait.")
+        process_video(input_path, output_path)
+        
+        st.success("Processing complete!")
+        
+        with open(output_path, "rb") as file:
+            st.download_button(label="Download Processed Video", data=file, file_name="processed_video.mp4", mime="video/mp4")
 
-# 動画の読み込み
-video = cv.VideoCapture("入力ファイルパス.mp4")  # テストしたい動画ファイルを指定
-
-frame_width = int(video.get(cv.CAP_PROP_FRAME_WIDTH))
-frame_height = int(video.get(cv.CAP_PROP_FRAME_HEIGHT))
-fps = video.get(cv.CAP_PROP_FPS)
-
-# 出力動画の初期化
-out = cv.VideoWriter(output_path, cv.VideoWriter_fourcc(*'MP4V'), fps, (frame_width, frame_height))
-
-while video.isOpened():
-    ret, frame = video.read()
-    if not ret:
-        break
-
-    frame_rgb = cv.cvtColor(frame, cv.COLOR_BGR2RGB)
-    results = pose.process(frame_rgb)
-
-    if results.pose_landmarks:
-        mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-
-    out.write(frame)
-
-video.release()
-out.release()
-pose.close()
+if __name__ == "__main__":
+    main()
