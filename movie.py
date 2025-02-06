@@ -36,7 +36,7 @@ def process_video(input_path, output_path):
 def main():
     st.title("Pose Estimation Video Processing")
     
-    uploaded_file = st.file_uploader("Upload a video file", type=["mp4", "mov", "avi"])
+    uploaded_file = st.file_uploader("Upload a video file", type=["mp4", "avi", "mov", "mkv"])
     
     if uploaded_file is not None:
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as temp_input:
