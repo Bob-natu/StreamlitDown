@@ -1,6 +1,5 @@
 import cv2
 import mediapipe as mp
-import os
 import tempfile
 import numpy as np
 import streamlit as st
@@ -30,61 +29,43 @@ if uploaded_file is not None:
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  # 高さ
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))  # 総フレーム数
 
-    # === 最小Y座標を探す（最も低い位置のフレームを特定） ===
-    min_y_value = float('inf')
-    min_y_frame = 0
-    landmark_points = [
-        mp_pose.PoseLandmark.LEFT_SHOULDER, mp_pose.PoseLandmark.RIGHT_SHOULDER,
-        mp_pose.PoseLandmark.LEFT_HEEL, mp_pose.PoseLandmark.RIGHT_HEEL
-    ]
+    # 出力動画の設定（保存用）
+    output_video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
+    # 切り取ったフレームのリスト
+    extracted_frames = []
+
+    # 動画フレームを読み込み、処理する
+    frame_count = 0
     with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
 
-            frame_count = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
+            # 文字描画用の設定
+            frame_count += 1
+            text = f"Frame: {frame_count}"
+
+            # フレームに文字を中央揃えで描画
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            text_size = cv2.getTextSize(text, font, 1, 2)[0]
+            text_x = (frame.shape[1] - text_size[0]) // 2
+            text_y = (frame.shape[0] + text_size[1]) // 2
+
+            cv2.putText(frame, text, (text_x, text_y), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
+
+            # 画像を中央揃えにする
             image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = pose.process(image_rgb)
 
+            # 骨格描画（必要に応じて）
             if results.pose_landmarks:
-                left_heel_y = results.pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_HEEL].y * height
-                right_heel_y = results.pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_HEEL].y * height
-                avg_y = (left_heel_y + right_heel_y) / 2
-
-                if avg_y < min_y_value:
-                    min_y_value = avg_y
-                    min_y_frame = frame_count
-
-    # 切り取りの開始・終了フレームを計算
-    start_frame = max(0, min_y_frame - 0)
-    end_frame = min(total_frames - 1, min_y_frame + 40)
-
-    # 出力動画の設定（保存用）
-    output_video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-    out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
-
-    # 切り取ったフレームのリスト
-    extracted_frames = []
-
-    # 切り取った範囲の動画を書き込み（骨格描画あり）
-    with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret or int(cap.get(cv2.CAP_PROP_POS_FRAMES)) > end_frame:
-                break
-
-            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = pose.process(image_rgb)
-
-            # 骨格描画
-            if results.pose_landmarks:
-                for landmark in landmark_points:
-                    lm = results.pose_landmarks.landmark[landmark]
-                    x, y = int(lm.x * width), int(lm.y * height)
+                for landmark in mp_pose.POSE_CONNECTIONS:
+                    x = int(results.pose_landmarks.landmark[landmark[0]].x * width)
+                    y = int(results.pose_landmarks.landmark[landmark[0]].y * height)
                     cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
             # フレームをリストに追加
@@ -101,7 +82,7 @@ if uploaded_file is not None:
     st.subheader("切り取ったフレーム")
     num_display = min(5, len(extracted_frames))  # 最大5枚表示
     for i in range(num_display):
-        st.image(extracted_frames[i], caption=f"Frame {start_frame + i + 1}")
+        st.image(extracted_frames[i], caption=f"Frame {i + 1}")
 
     # === 出力動画のダウンロード ===
     with open(output_video_path, "rb") as file:
