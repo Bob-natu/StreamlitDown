@@ -30,8 +30,6 @@ if uploaded_file is not None:
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  # 高さ
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))  # 総フレーム数
 
-    st.write(f"📊 動画情報: FPS={fps:.2f}, 解像度={width}x{height}, フレーム数={total_frames}")
-
     # === 最小Y座標を探す（最も低い位置のフレームを特定） ===
     min_y_value = float('inf')
     min_y_frame = 0
@@ -100,7 +98,7 @@ if uploaded_file is not None:
     out.release()
 
     # === 切り取ったフレームを表示 ===
-    st.subheader("📷 切り取ったフレーム")
+    st.subheader("切り取ったフレーム")
     num_display = min(5, len(extracted_frames))  # 最大5枚表示
     for i in range(num_display):
         st.image(extracted_frames[i], caption=f"Frame {start_frame + i + 1}")
@@ -108,5 +106,5 @@ if uploaded_file is not None:
     # === 出力動画のダウンロード ===
     with open(output_video_path, "rb") as file:
         video_bytes = file.read()
-    st.subheader("🎥 切り取った動画のダウンロード")
-    st.download_button(label="📥 ダウンロード", data=video_bytes, file_name="processed_video.mp4", mime="video/mp4")
+    st.subheader("切り取った動画のダウンロード")
+    st.download_button(label="ダウンロード", data=video_bytes, file_name="processed_video.mp4", mime="video/mp4")
