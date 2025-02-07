@@ -132,6 +132,8 @@ if uploaded_file is not None:
 
                 # 骨格を描画
                 mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+                cv2.circle(frame, (int(left_shoulder.x*frame_width), int(left_shoulder.y*frame_height)), 10, (0, 255, 0), -1)
+                cv2.circle(frame, (int(right_shoulder.x*frame_width), int(right_shoulder.y*frame_height)), 10, (0, 255, 0), -1)
 
                 # 動画にフレーム番号と肩の角度をオーバーレイ表示
                 cv2.putText(frame, f"Frame: {frame_number}", (50, 50),
