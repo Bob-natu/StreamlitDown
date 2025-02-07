@@ -49,12 +49,11 @@ if uploaded_file is not None:
             frame_count += 1
             text = f"Frame: {frame_count}"
 
-            # フレームに文字を中央揃えで描画
+            # フレームに文字を描画
             font = cv2.FONT_HERSHEY_SIMPLEX
             text_size = cv2.getTextSize(text, font, 1, 2)[0]
             text_x = (frame.shape[1] - text_size[0]) // 2
             text_y = (frame.shape[0] + text_size[1]) // 2
-
             cv2.putText(frame, text, (text_x, text_y), font, 1, (0, 255, 0), 2, cv2.LINE_AA)
 
             # 画像を中央揃えにする
@@ -78,14 +77,14 @@ if uploaded_file is not None:
     cap.release()
     out.release()
 
-    # === 切り取ったフレームを表示 ===
-    st.subheader("切り取ったフレーム")
+    # === Streamlit内でフレームやテキストを中央揃えで表示 ===
+    st.subheader("切り取ったフレーム", anchor="center")  # ヘッダーを中央揃え
     num_display = min(5, len(extracted_frames))  # 最大5枚表示
     for i in range(num_display):
-        st.image(extracted_frames[i], caption=f"Frame {i + 1}")
+        st.image(extracted_frames[i], caption=f"Frame {i + 1}", use_column_width=True)  # 画像を中央揃え
 
-    # === 出力動画のダウンロード ===
+    # === 出力動画のダウンロード（中央揃え）===
     with open(output_video_path, "rb") as file:
         video_bytes = file.read()
-    st.subheader("切り取った動画のダウンロード")
+    st.subheader("切り取った動画のダウンロード", anchor="center")  # ヘッダーを中央揃え
     st.download_button(label="ダウンロード", data=video_bytes, file_name="processed_video.mp4", mime="video/mp4")
