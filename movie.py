@@ -1,82 +1,112 @@
-import streamlit as st
 import cv2
 import mediapipe as mp
-import numpy as np
-import tempfile
 import os
+import tempfile
+import numpy as np
+import streamlit as st
 
-def process_video(input_video_path):
-    mp_pose = mp.solutions.pose
-    cap = cv2.VideoCapture(input_video_path)
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    
+# Streamlit UI
+st.title("Volleyball Spike Analysis App")
+uploaded_file = st.file_uploader("動画をアップロードしてください", type=["mp4", "mov", "avi"])
+
+# MediaPipe Poseの初期化
+mp_pose = mp.solutions.pose
+pose_connections = mp_pose.POSE_CONNECTIONS
+
+if uploaded_file is not None:
+    # 一時ファイルとして保存
+    temp_video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+    with open(temp_video_path, "wb") as f:
+        f.write(uploaded_file.read())
+
+    # 動画を読み込む
+    cap = cv2.VideoCapture(temp_video_path)
+    if not cap.isOpened():
+        st.error("動画の読み込みに失敗しました。")
+        st.stop()
+
+    fps = cap.get(cv2.CAP_PROP_FPS)  # フレームレート（小数点対応）
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # 幅
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  # 高さ
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))  # 総フレーム数
+
+    st.write(f"📊 動画情報: FPS={fps:.2f}, 解像度={width}x{height}, フレーム数={total_frames}")
+
+    # === 最小Y座標を探す（最も低い位置のフレームを特定） ===
     min_y_value = float('inf')
     min_y_frame = 0
-    
-    with mp_pose.Pose(static_image_mode=False, model_complexity=1) as pose:
+    landmark_points = [
+        mp_pose.PoseLandmark.LEFT_SHOULDER, mp_pose.PoseLandmark.RIGHT_SHOULDER,
+        mp_pose.PoseLandmark.LEFT_HEEL, mp_pose.PoseLandmark.RIGHT_HEEL
+    ]
+
+    with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
                 break
+
             frame_count = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
             image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = pose.process(image_rgb)
+
             if results.pose_landmarks:
                 left_heel_y = results.pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_HEEL].y * height
                 right_heel_y = results.pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_HEEL].y * height
                 avg_y = (left_heel_y + right_heel_y) / 2
+
                 if avg_y < min_y_value:
                     min_y_value = avg_y
                     min_y_frame = frame_count
-    
+
+    # 切り取りの開始・終了フレームを計算
     start_frame = max(0, min_y_frame - 0)
     end_frame = min(total_frames - 1, min_y_frame + 40)
-    
-    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-    temp_video_path = tempfile.mktemp(suffix=".mp4")
+
+    # 出力動画の設定（保存用）
+    output_video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(temp_video_path, fourcc, fps, (width, height))
+    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+    out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
+
+    # 切り取ったフレームのリスト
     extracted_frames = []
-    
-    with mp_pose.Pose(static_image_mode=False, model_complexity=1) as pose:
+
+    # 切り取った範囲の動画を書き込み（骨格描画あり）
+    with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret or int(cap.get(cv2.CAP_PROP_POS_FRAMES)) > end_frame:
                 break
+
             image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = pose.process(image_rgb)
+
+            # 骨格描画
             if results.pose_landmarks:
-                for lm in [mp_pose.PoseLandmark.LEFT_SHOULDER, mp_pose.PoseLandmark.RIGHT_SHOULDER]:
-                    x, y = int(results.pose_landmarks.landmark[lm].x * width), int(results.pose_landmarks.landmark[lm].y * height)
+                for landmark in landmark_points:
+                    lm = results.pose_landmarks.landmark[landmark]
+                    x, y = int(lm.x * width), int(lm.y * height)
                     cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
-            extracted_frames.append(frame.copy())
+
+            # フレームをリストに追加
+            extracted_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+            # 動画に書き込み
             out.write(frame)
-    
+
+    # リソースの解放
     cap.release()
     out.release()
-    return temp_video_path, extracted_frames
 
-st.title("Pose Extraction and Video Processing")
-uploaded_file = st.file_uploader("Upload a video", type=["mp4", "mov", "avi"])
+    # === 切り取ったフレームを表示 ===
+    st.subheader("📷 切り取ったフレーム")
+    num_display = min(5, len(extracted_frames))  # 最大5枚表示
+    for i in range(num_display):
+        st.image(extracted_frames[i], caption=f"Frame {start_frame + i + 1}")
 
-if uploaded_file is not None:
-    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-    temp_file.write(uploaded_file.read())
-    temp_file_path = temp_file.name
-    
-    st.video(temp_file_path)
-    
-    if st.button("Process Video"):
-        with st.spinner("Processing..."):
-            output_video_path, extracted_frames = process_video(temp_file_path)
-            
-        st.success("Processing complete!")
-        st.subheader("Extracted Frames")
-        for img in extracted_frames:
-            st.image(img, channels="BGR")
-        
-        with open(output_video_path, "rb") as f:
-            st.download_button("Download Processed Video", f, file_name="processed_video.mp4", mime="video/mp4")
+    # === 出力動画のダウンロード ===
+    with open(output_video_path, "rb") as file:
+        video_bytes = file.read()
+    st.subheader("🎥 切り取った動画のダウンロード")
+    st.download_button(label="📥 ダウンロード", data=video_bytes, file_name="processed_video.mp4", mime="video/mp4")
