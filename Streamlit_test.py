@@ -5,45 +5,42 @@ import math
 import matplotlib.pyplot as plt
 import os
 import numpy as np
+import ffmpeg
 from io import BytesIO
 
-# Streamlit UI設定
+def get_video_rotation(video_path):
+    try:
+        meta_data = ffmpeg.probe(video_path)
+        for stream in meta_data['streams']:
+            if stream['codec_type'] == 'video' and 'side_data_list' in stream:
+                for side_data in stream['side_data_list']:
+                    if side_data['side_data_type'] == 'Display Matrix':
+                        rotation = side_data.get('rotation', 0)
+                        return rotation
+    except Exception as e:
+        st.error(f"動画の回転情報を取得できませんでした: {e}")
+    return 0
+
+def correct_video_rotation(frame, rotation):
+    if rotation == 90:
+        return cv2.rotate(frame, cv2.ROTATE_90_CLOCKWISE)
+    elif rotation == 180:
+        return cv2.rotate(frame, cv2.ROTATE_180)
+    elif rotation == 270:
+        return cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    return frame
+
 st.title("肩の位置追跡とグラフ作成")
 
-# 動画アップロード
 uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4", "avi", "mov", "mkv"])
 
 if uploaded_file is not None:
-    # 動画の読み込み
     input_video_path = os.path.join("/tmp", uploaded_file.name)
     with open(input_video_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
     
-    # 出力設定
-    output_dir = "/tmp/output"
-    os.makedirs(output_dir, exist_ok=True)
-    output_video_path = os.path.join(output_dir, "output.mp4")
-    output_graph_path = os.path.join(output_dir, "graph.jpg")
-    output_shoulder_image_path = os.path.join(output_dir, "highest_wrist.jpg")
-
-    # MediaPipe Pose 初期化
-    mp_pose = mp.solutions.pose
-    mp_drawing = mp.solutions.drawing_utils
-
-    # データ保存用
-    frame_numbers = []
-    right_shoulder_y = []
-    left_shoulder_y = []
-    shoulder_angles = []
-
-    # 右肩の最高到達点データ
-    highest_shoulder_image = None
-    highest_shoulder_landmarks = None
-    min_right_shoulder_y = float('inf')  # 右肩の最小Y座標（最高到達点）
-    min_right_shoulder_frame = -1  # 最高到達点のフレーム番号
-    shoulder_angle_at_highest = None  # 最高到達点時の肩の角度
-
-    # 動画読み込み
+    rotation = get_video_rotation(input_video_path)
+    
     cap = cv2.VideoCapture(input_video_path)
     if not cap.isOpened():
         st.error(f"動画ファイルを開けません: {input_video_path}")
@@ -54,47 +51,26 @@ if uploaded_file is not None:
     fps = cap.get(cv2.CAP_PROP_FPS)
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    # 出力動画設定
+    output_dir = "/tmp/output"
+    os.makedirs(output_dir, exist_ok=True)
+    output_video_path = os.path.join(output_dir, "output.mp4")
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height + 150))  # グラフの高さを150に変更
-    if not out.isOpened():
-        st.error(f"出力動画を作成できません: {output_video_path}")
-        st.stop()
+    out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
-    # グラフの初期設定
-    plt.ion()
-    fig, ax = plt.subplots(figsize=(10, 5))
+    mp_pose = mp.solutions.pose
+    mp_drawing = mp.solutions.drawing_utils
     
-    # グラフの背景色を設定
-    ax.set_facecolor('#f0f0f0')  # グレー背景
-    
-    # 線のスタイルを調整（太さや色）
-    line_right, = ax.plot([], [], label="Right Shoulder Y", color="blue", linewidth=2)
-    line_left, = ax.plot([], [], label="Left Shoulder Y", color="green", linewidth=2)
-    highest_point, = ax.plot([], [], 'ro', label="Highest Right Shoulder", markersize=8)
-    
-    # 軸のラベルやタイトルのフォントサイズを調整
-    ax.set_xlim(0, total_frames)
-    ax.set_ylim(0, 1)
-    ax.set_xlabel("Frame Number", fontsize=12)
-    ax.set_ylabel("Y Coordinate (Flipped)", fontsize=12)
-    ax.set_title("Shoulder Coordinates Over Time", fontsize=14)
-    ax.legend(fontsize=10)
+    frame_numbers = []
+    right_shoulder_y = []
+    left_shoulder_y = []
 
-    # 目盛りのサイズを変更
-    ax.tick_params(axis='both', which='major', labelsize=10)
-    
-    # Pose インスタンス作成
     with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
-                st.success("動画処理が完了しました。")
                 break
-
-            frame_number = int(cap.get(cv2.CAP_PROP_POS_FRAMES))
-
-            # フレームをRGBに変換して処理
+            
+            frame = correct_video_rotation(frame, rotation)
             image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = pose.process(image_rgb)
 
@@ -102,105 +78,17 @@ if uploaded_file is not None:
                 landmarks = results.pose_landmarks.landmark
                 right_shoulder = landmarks[mp_pose.PoseLandmark.RIGHT_SHOULDER]
                 left_shoulder = landmarks[mp_pose.PoseLandmark.LEFT_SHOULDER]
-
-                # 両肩のY座標保存
-                frame_numbers.append(frame_number)
+                
+                frame_numbers.append(len(frame_numbers) + 1)
                 right_shoulder_y.append(right_shoulder.y)
                 left_shoulder_y.append(left_shoulder.y)
-
-                # 肩の角度を計算
-                left_x, left_y = left_shoulder.x, left_shoulder.y
-                right_x, right_y = right_shoulder.x, right_shoulder.y
-                delta_x = left_x - right_x
-                delta_y = left_y - right_y
-                angle = math.degrees(math.atan2(delta_y, delta_x))
-                deel_angle = 180.0 - angle
-
-                # 角度が 180° を超えた場合、負の値に変換
-                if deel_angle > 180.0:
-                    deel_angle -= 360.0
-
-                shoulder_angles.append(deel_angle)
-
-                # 右肩の最高到達点を記録
-                if right_shoulder.y < min_right_shoulder_y:  # 最小Y座標が最高到達点
-                    min_right_shoulder_y = right_shoulder.y
-                    min_right_shoulder_frame = frame_number
-                    highest_shoulder_image = frame.copy()
-                    highest_shoulder_landmarks = results.pose_landmarks
-                    shoulder_angle_at_highest = deel_angle
-
-                # 骨格を描画
+                
                 mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
-                cv2.circle(frame, (int(left_shoulder.x*frame_width), int(left_shoulder.y*frame_height)), 10, (0, 0, 255), -1)  # 左肩を赤
-                cv2.circle(frame, (int(right_shoulder.x*frame_width), int(right_shoulder.y*frame_height)), 10, (0, 255, 0), -1)  # 右肩を緑
-
-                # 動画にフレーム番号と肩の角度をオーバーレイ表示
-                cv2.putText(frame, f"Frame: {frame_number}", (50, 50),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2, cv2.LINE_AA)
-                cv2.putText(frame, f"Shoulder Angle: {deel_angle:.2f} deg", (50, 100),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-
-            # グラフを更新
-            line_right.set_data(frame_numbers, [1 - y for y in right_shoulder_y])  # 反転させることで頂点表示
-            line_left.set_data(frame_numbers, [1 - y for y in left_shoulder_y])
-            if min_right_shoulder_frame > 0:  # 右肩の最高到達点
-                highest_point.set_data([min_right_shoulder_frame], [1 - min_right_shoulder_y])
-            ax.set_xlim(0, max(10, frame_number + 10))
-            plt.pause(0.001)
-
-            # グラフを画像に変換
-            buf = BytesIO()
-            fig.savefig(buf, format='png')
-            buf.seek(0)
-
-            # バッファをNumPy配列として読み込む
-            graph_image = np.array(bytearray(buf.read()), dtype=np.uint8)
-            graph_image = cv2.imdecode(graph_image, cv2.IMREAD_COLOR)
-
-            # グラフを動画フレームの下部に結合
-            graph_resized = cv2.resize(graph_image, (frame_width, 150))  # グラフを150ピクセルに調整
-            frame_with_graph = np.vstack([frame, graph_resized])  # 縦に結合
-
-            # 動画保存
-            out.write(frame_with_graph)
             
-        # リソース解放
+            out.write(frame)
+        
         cap.release()
         out.release()
-        
-
-    # 動画ダウンロードボタン
+    
     with open(output_video_path, "rb") as f:
-        st.download_button("動画をダウンロード", f, file_name="processed_video.mp4", mime="video/mp4")
-
-    # グラフ保存
-    plt.ioff()
-    if frame_numbers:
-        plt.savefig(output_graph_path)
-        st.pyplot(fig)  # グラフをStreamlitに表示
-        plt.close()
-
-    # 右肩の最高到達点画像保存（骨格描画付き）
-    if highest_shoulder_image is not None and highest_shoulder_landmarks is not None:
-        try:
-            # 骨格を画像に描画
-            mp_drawing.draw_landmarks(highest_shoulder_image, highest_shoulder_landmarks, mp_pose.POSE_CONNECTIONS)
-
-            # 画像にフレーム番号と肩の角度をオーバーレイ表示
-            cv2.putText(highest_shoulder_image, f"Highest Frame: {min_right_shoulder_frame}", (50, 50),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2, cv2.LINE_AA)
-            if shoulder_angle_at_highest is not None:
-                cv2.putText(highest_shoulder_image, f"Shoulder Angle: {shoulder_angle_at_highest:.2f} deg", (50, 100),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2, cv2.LINE_AA)
-
-            # 画像保存
-            success = cv2.imwrite(output_shoulder_image_path, highest_shoulder_image)
-            if success:
-                st.image(highest_shoulder_image, channels="BGR", use_container_width=True)  # 画像を表示
-            else:
-                st.error(f"画像保存に失敗しました: {output_shoulder_image_path}")
-        except Exception as e:
-            st.error(f"右肩画像保存中にエラーが発生しました: {e}")
-    else:
-        st.warning("最高到達点の画像が存在しないか、骨格データがありません。")
+        st.download_button("修正済み動画をダウンロード", f, file_name="corrected_video.mp4", mime="video/mp4")
