@@ -117,7 +117,7 @@ if uploaded_file is not None:
     # 右手首の最高点のフレームを表示
     if highest_wrist_frame is not None:
         highest_wrist_frame_rgb = cv2.cvtColor(highest_wrist_frame, cv2.COLOR_BGR2RGB)
-        st.image(highest_wrist_frame_rgb, caption="右手首が最も高いフレーム", use_column_width=True)
+        st.image(highest_wrist_frame_rgb, caption="右手首が最も高いフレーム", use_container_width=True)
 
     # 動画ダウンロードボタン
     with open(output_video_path, "rb") as f:
