@@ -46,7 +46,8 @@ if uploaded_file is not None:
 
     # 出力動画設定
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+    # 出力動画設定（高さを増やす）
+    out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height + 150))
 
     # グラフの初期設定
     plt.ion()
