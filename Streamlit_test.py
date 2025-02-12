@@ -49,7 +49,7 @@ if uploaded_file is not None:
     fps = cap.get(cv2.CAP_PROP_FPS)
 
     # 出力動画設定
-    fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264 コーデックに変更
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # H.264 コーデックに変更
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
     # Pose インスタンス作成
