@@ -1,44 +1,39 @@
 import cv2
 import mediapipe as mp
 import os
-import tempfile
-import numpy as np
 import streamlit as st
+from tempfile import NamedTemporaryFile
+from PIL import Image
 
 # Streamlit UI
-st.title("Volleyball Spike Analysis App")
-uploaded_file = st.file_uploader("動画をアップロードしてください", type=["mp4", "mov", "avi"])
-
-# MediaPipe Poseの初期化
-mp_pose = mp.solutions.pose
-pose_connections = mp_pose.POSE_CONNECTIONS
+st.title("Volleyball Spike Analysis")
+uploaded_file = st.file_uploader("Upload a video", type=["mp4", "avi", "mov"])
 
 if uploaded_file is not None:
-    # 一時ファイルとして保存
-    temp_video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-    with open(temp_video_path, "wb") as f:
-        f.write(uploaded_file.read())
+    tfile = NamedTemporaryFile(delete=False)
+    tfile.write(uploaded_file.read())
+    input_video_path = tfile.name
+    
+    output_video_path = "output_video.mp4"
+    output_image_dir = "output_images"
+    os.makedirs(output_image_dir, exist_ok=True)
 
-    # 動画を読み込む
-    cap = cv2.VideoCapture(temp_video_path)
+    # MediaPipe Pose setup
+    mp_pose = mp.solutions.pose
+    
+    cap = cv2.VideoCapture(input_video_path)
     if not cap.isOpened():
-        st.error("動画の読み込みに失敗しました。")
+        st.error("Failed to load video.")
         st.stop()
-
-    fps = cap.get(cv2.CAP_PROP_FPS)  # フレームレート（小数点対応）
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))  # 幅
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))  # 高さ
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))  # 総フレーム数
-
-    st.write(f"動画情報: FPS={fps:.2f}, 解像度={width}x{height}, フレーム数={total_frames}")
-
-    # === 最小Y座標を探す（最も低い位置のフレームを特定） ===
+    
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    
     min_y_value = float('inf')
     min_y_frame = 0
-    landmark_points = [
-        mp_pose.PoseLandmark.LEFT_SHOULDER, mp_pose.PoseLandmark.RIGHT_SHOULDER,
-        mp_pose.PoseLandmark.LEFT_HEEL, mp_pose.PoseLandmark.RIGHT_HEEL
-    ]
 
     with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
         while cap.isOpened():
@@ -58,21 +53,14 @@ if uploaded_file is not None:
                 if avg_y < min_y_value:
                     min_y_value = avg_y
                     min_y_frame = frame_count
+    
+    start_frame = max(0, min_y_frame)
+    frame_count_add = int(fps / 1.5)
+    end_frame = min(total_frames - 1, min_y_frame + frame_count_add)
 
-    # 切り取りの開始・終了フレームを計算
-    start_frame = max(0, min_y_frame - 0)
-    end_frame = min(total_frames - 1, min_y_frame + 40)
-
-    # 出力動画の設定（保存用）
-    output_video_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (width, height))
 
-    # 切り取ったフレームのリスト
-    extracted_frames = []
-
-    # 切り取った範囲の動画を書き込み（骨格描画あり）
     with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
         while cap.isOpened():
             ret, frame = cap.read()
@@ -82,31 +70,67 @@ if uploaded_file is not None:
             image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             results = pose.process(image_rgb)
 
-            # 骨格描画
             if results.pose_landmarks:
-                for landmark in landmark_points:
+                for landmark in [mp_pose.PoseLandmark.LEFT_SHOULDER, mp_pose.PoseLandmark.RIGHT_SHOULDER,
+                                 mp_pose.PoseLandmark.LEFT_HEEL, mp_pose.PoseLandmark.RIGHT_HEEL]:
                     lm = results.pose_landmarks.landmark[landmark]
                     x, y = int(lm.x * width), int(lm.y * height)
                     cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)
 
-            # フレームをリストに追加
-            extracted_frames.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-
-            # 動画に書き込み
             out.write(frame)
-
-    # リソースの解放
+    
     cap.release()
     out.release()
 
-    # === 切り取ったフレームを表示 ===
-    st.subheader("切り取ったフレーム")
-    num_display = min(5, len(extracted_frames))  # 最大5枚表示
-    for i in range(num_display):
-        st.image(extracted_frames[i], caption=f"Frame {start_frame + i + 1}")
+    # Step detection and image saving
+    cap = cv2.VideoCapture(output_video_path)
+    prev_left_ankle_y = prev_left_knee_y = None
+    prev_right_ankle_y = prev_right_knee_y = None
+    STEP_THRESHOLD = 0.01
+    saved_steps = 0
+    target_steps = 6
+    step_images = []
+    
+    with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
+        while cap.isOpened() and saved_steps < target_steps:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            image_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            results = pose.process(image_rgb)
+            
+            if results.pose_landmarks:
+                left_ankle_y = results.pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_ANKLE].y
+                left_knee_y = results.pose_landmarks.landmark[mp_pose.PoseLandmark.LEFT_KNEE].y
+                right_ankle_y = results.pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_ANKLE].y
+                right_knee_y = results.pose_landmarks.landmark[mp_pose.PoseLandmark.RIGHT_KNEE].y
+                
+                step_detected = False
+                step_type = ""
+                
+                if prev_left_ankle_y is not None and (left_ankle_y - prev_left_ankle_y) > STEP_THRESHOLD and (left_knee_y - prev_left_knee_y) > STEP_THRESHOLD:
+                    step_detected = True
+                    step_type = "left"
+                
+                if prev_right_ankle_y is not None and (right_ankle_y - prev_right_ankle_y) > STEP_THRESHOLD and (right_knee_y - prev_right_knee_y) > STEP_THRESHOLD:
+                    step_detected = True
+                    step_type = "right"
+                
+                if step_detected:
+                    image_path = os.path.join(output_image_dir, f"{step_type}_step_{saved_steps + 1}.png")
+                    cv2.imwrite(image_path, frame)
+                    step_images.append(image_path)
+                    saved_steps += 1
+                
+                prev_left_ankle_y, prev_left_knee_y = left_ankle_y, left_knee_y
+                prev_right_ankle_y, prev_right_knee_y = right_ankle_y, right_knee_y
+    
+    st.success("Processing complete!")
 
-    # === 出力動画のダウンロード ===
     with open(output_video_path, "rb") as file:
-        video_bytes = file.read()
-    st.subheader("切り取った動画のダウンロード")
-    st.download_button(label="ダウンロード", data=video_bytes, file_name="processed_video.mp4", mime="video/mp4")
+        st.download_button("Download Processed Video", file, "processed_video.mp4", "video/mp4")
+    
+    for img in step_images:
+        image = Image.open(img)
+        st.image(image, caption=os.path.basename(img))
