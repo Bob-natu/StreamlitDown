@@ -128,9 +128,6 @@ if uploaded_file is not None:
         cap.release()
         out.release()
 
-    # 処理した動画をアプリ内で表示
-    st.video(output_video_path)
-
     # 動画ダウンロードボタン
     with open(output_video_path, "rb") as f:
         st.download_button("動画をダウンロード", f, file_name="processed_video.mp4", mime="video/mp4")
