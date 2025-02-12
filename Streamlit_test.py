@@ -49,18 +49,9 @@ if uploaded_file is not None:
     fps = cap.get(cv2.CAP_PROP_FPS)
 
     # 出力動画設定
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height + 150))
+    fourcc = cv2.VideoWriter_fourcc(*'avc1')  # H.264 コーデックに変更
+    out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
-    # グラフの初期設定
-    plt.ion()
-    fig, ax = plt.subplots(figsize=(10, 5))
-    ax.set_facecolor('#f0f0f0')
-    ax.set_xlabel("Frame Number", fontsize=12)
-    ax.set_ylabel("Y Coordinate (Flipped)", fontsize=12)
-    ax.set_title("Shoulder Coordinates Over Time", fontsize=14)
-    ax.legend(["Right Shoulder Y", "Left Shoulder Y", "Highest Right Shoulder"])
-    
     # Pose インスタンス作成
     with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
         while cap.isOpened():
@@ -99,9 +90,13 @@ if uploaded_file is not None:
 
                 # 骨格を描画
                 mp_drawing.draw_landmarks(frame, results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+            
+            # フレームを書き込む
+            out.write(frame)
     
-        cap.release()
-        out.release()
+    # リソース解放
+    cap.release()
+    out.release()
 
     # グラフを作成しアプリ内に表示
     fig, ax = plt.subplots(figsize=(10, 5))
