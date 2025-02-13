@@ -86,9 +86,9 @@ if uploaded_file is not None:
     cap = cv2.VideoCapture(output_video_path)
     prev_left_ankle_y = prev_left_knee_y = None
     prev_right_ankle_y = prev_right_knee_y = None
-    STEP_THRESHOLD = 0.02 
+    STEP_THRESHOLD = 0.01 
     saved_steps = 0
-    target_steps = 6
+    target_steps = 3
     step_images = []
     
     with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
