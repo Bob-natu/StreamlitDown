@@ -3,8 +3,9 @@ import cv2
 import mediapipe as mp
 import os
 import numpy as np
-from io import BytesIO
+import tempfile
 import matplotlib.pyplot as plt
+import subprocess
 
 # Streamlit UI設定
 st.title("肩の位置追跡とグラフ作成")
@@ -12,16 +13,33 @@ st.title("肩の位置追跡とグラフ作成")
 # 動画アップロード
 uploaded_file = st.file_uploader("動画ファイルをアップロードしてください", type=["mp4", "avi", "mov", "mkv"])
 
+def convert_to_mp4(input_path, output_path):
+    """動画形式をMP4に変換する"""
+    # ffmpegを使用してMP4に変換
+    command = [
+        'ffmpeg', '-i', input_path, '-vcodec', 'libx264', '-acodec', 'aac', '-strict', 'experimental', output_path
+    ]
+    subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
 if uploaded_file is not None:
-    # 動画の読み込み
-    input_video_path = os.path.join("/tmp", uploaded_file.name)
+    # 一時ディレクトリに動画を保存
+    temp_dir = tempfile.TemporaryDirectory()
+    input_video_path = os.path.join(temp_dir.name, uploaded_file.name)
+
     with open(input_video_path, "wb") as f:
         f.write(uploaded_file.getbuffer())
-    
-    # 出力設定
-    output_dir = "/tmp/output"
-    os.makedirs(output_dir, exist_ok=True)
-    output_video_path = os.path.join(output_dir, "output.mp4")
+
+    # 出力設定（MP4）
+    output_video_path = os.path.join(temp_dir.name, "output.mp4")
+
+    # アップロードされた動画がMP4以外の形式の場合、変換する
+    if not input_video_path.endswith(".mp4"):
+        # 変換後の動画パス
+        temp_mp4_path = os.path.join(temp_dir.name, "converted.mp4")
+        # 動画をMP4に変換
+        convert_to_mp4(input_video_path, temp_mp4_path)
+        input_video_path = temp_mp4_path
+        st.write(f"動画形式が変換されました: {input_video_path}")
 
     # MediaPipe Pose 初期化
     mp_pose = mp.solutions.pose
@@ -48,12 +66,19 @@ if uploaded_file is not None:
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = cap.get(cv2.CAP_PROP_FPS)
 
+    # 動画読み込み
+    ret, first_frame = cap.read()
+    if not ret:
+        st.error("動画の最初のフレームを取得できませんでした。")
+        st.stop()
+
     # 出力動画設定
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')  # H.264 コーデックに変更
     out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
     # Pose インスタンス作成
     with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)  # 先頭に戻す
         while cap.isOpened():
             ret, frame = cap.read()
             if not ret:
@@ -117,3 +142,6 @@ if uploaded_file is not None:
     # 動画ダウンロードボタン
     with open(output_video_path, "rb") as f:
         st.download_button("動画をダウンロード", f, file_name="processed_video.mp4", mime="video/mp4")
+
+    # 一時ディレクトリを削除
+    temp_dir.cleanup()
