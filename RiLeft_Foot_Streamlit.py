@@ -4,10 +4,18 @@ import os
 import streamlit as st
 from tempfile import NamedTemporaryFile
 from PIL import Image
+import subprocess
 
 # Streamlit UI
 st.title("Volleyball Spike Analysis")
 uploaded_file = st.file_uploader("Upload a video", type=["mp4", "avi", "mov"])
+
+def convert_to_mp4(input_path, output_path):
+    """動画形式をMP4に変換する"""
+    command = [
+        'ffmpeg', '-i', input_path, '-vcodec', 'libx264', '-acodec', 'aac', '-strict', 'experimental', output_path
+    ]
+    subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 if uploaded_file is not None:
     tfile = NamedTemporaryFile(delete=False)
