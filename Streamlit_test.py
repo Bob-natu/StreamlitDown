@@ -5,7 +5,7 @@ import os
 import numpy as np
 import tempfile
 import matplotlib.pyplot as plt
-from moviepy.editor import VideoFileClip # type: ignore
+from moviepy.editor import VideoFileClip
 
 # Streamlit UI設定
 st.title("肩の位置追跡とグラフ作成")
