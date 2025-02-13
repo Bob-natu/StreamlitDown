@@ -5,7 +5,7 @@ import os
 import numpy as np
 import tempfile
 import matplotlib.pyplot as plt
-import subprocess
+from moviepy.editor import VideoFileClip # type: ignore
 
 # Streamlit UI設定
 st.title("肩の位置追跡とグラフ作成")
@@ -15,11 +15,9 @@ uploaded_file = st.file_uploader("動画ファイルをアップロードして�
 
 def convert_to_mp4(input_path, output_path):
     """動画形式をMP4に変換する"""
-    # ffmpegを使用してMP4に変換
-    command = [
-        'ffmpeg', '-i', input_path, '-vcodec', 'libx264', '-acodec', 'aac', '-strict', 'experimental', output_path
-    ]
-    subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    # moviepyを使用してMP4に変換
+    clip = VideoFileClip(input_path)
+    clip.write_videofile(output_path, codec='libx264', audio_codec='aac')
 
 if uploaded_file is not None:
     # 一時ディレクトリに動画を保存
