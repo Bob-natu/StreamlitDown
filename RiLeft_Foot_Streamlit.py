@@ -96,7 +96,7 @@ if uploaded_file is not None:
     prev_right_ankle_y = prev_right_knee_y = None
     STEP_THRESHOLD = 0.01 
     saved_steps = 0
-    target_steps = 3
+    target_steps = 6
     step_images = []
     
     with mp_pose.Pose(static_image_mode=False, model_complexity=1, enable_segmentation=False) as pose:
